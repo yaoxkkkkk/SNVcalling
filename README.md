@@ -6,6 +6,6 @@ This pipeline is comprised by following part:
 - Resequencing reads quality control
 - Resequencing reads map to reference genome
 - GATK SNP and INDEL calling pipeline
-- SNP quality control (MissingRate, MAF etc.)
+- SNP quality control (Missing rate, MAF etc.)
 
 Main result file:
