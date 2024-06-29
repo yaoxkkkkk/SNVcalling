@@ -1,8 +1,5 @@
 import os
 
-# Load the config file
-configfile: "SNPcalling_config.yaml"
-
 # Extract basename of fasta file (part between path and extension name)
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 
