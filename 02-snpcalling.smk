@@ -1,9 +1,9 @@
 import os
+configfile: "SNPcalling_config.yaml"
 
 # 提取文件名的基部分（去除路径和扩展名）
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 
-# Target file
 rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
@@ -16,7 +16,6 @@ rule all:
         "vcf/filtered.vcf.gz",
         "vcf/clean"
 
-# Step 1: Quality Control with fastp
 rule QualityControlfastp:
     input:
         "raw_data/{sample}_1.fastq.gz",
@@ -39,7 +38,6 @@ rule QualityControlfastp:
         &> {log}
         """
 
-# Step 2: Mapping with BWA
 rule BWA_map:
     input:
         "clean_data/{sample}.1_clean.fq.gz",
@@ -67,7 +65,6 @@ rule BWA_map:
         &> {log}
         """
 
-# Step 3: Remove Duplicates with GATK
 rule RemoveDuplicates:
     input:
         "mapping/{sample}.sorted.bam"
@@ -87,7 +84,6 @@ rule RemoveDuplicates:
         &> {log}
         """
 
-# Step 4: Call Variants with HaplotypeCaller
 rule HaplotypeCaller:
     input:
         "mapping/{sample}.sorted.markdup.bam",
@@ -110,7 +106,6 @@ rule HaplotypeCaller:
         &> {log}
         """
 
-# Step 5: Create GVCF list
 rule ExtractVCFlist:
     input:
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
@@ -123,7 +118,6 @@ rule ExtractVCFlist:
         find {params.gvcf_dir} -name '*.g.vcf.gz' > {output}
         """
 
-# Step 6: Consolidate GVCFs
 rule ConsolidateGVCFs:
     input:
         "vcf/gvcf/vcf.list"
@@ -140,7 +134,6 @@ rule ConsolidateGVCFs:
         &> {log}
         """
 
-# Step 7: Genotype GVCFs
 rule GenotypeGVCFs:
     input:
         "vcf/cohort.g.vcf.gz"
@@ -157,7 +150,6 @@ rule GenotypeGVCFs:
         &> {log}
         """
 
-# Step 8: Select SNPs
 rule Select_snp:
     input:
         "vcf/raw.vcf.gz"
@@ -174,7 +166,6 @@ rule Select_snp:
         &> {log}
         """
 
-# Step 9: Filter SNPs
 rule Mark_snp:
     input:
         "vcf/snp/raw.snp.vcf.gz"
@@ -205,7 +196,6 @@ rule Mark_snp:
         &> {log}
         """
 
-# Step 10: Exclude filtered SNPs
 rule Filter_snp:
     input:
         "vcf/snp/filter.snp.vcf.gz"
@@ -223,7 +213,6 @@ rule Filter_snp:
         &> {log}
         """
 
-# Step 11: Filter SNPs by Missing Rate and MAF
 rule SNPMissingRateAndMAFFilter:
     input:
         "vcf/snp/filtered.snp.vcf.gz"
@@ -242,7 +231,6 @@ rule SNPMissingRateAndMAFFilter:
         &> {log}
         """
 
-# Step 12: Select Indels
 rule Select_indel:
     input:
         "vcf/raw.vcf.gz"
@@ -259,7 +247,6 @@ rule Select_indel:
         &> {log}
         """
 
-# Step 13: Filter Indels
 rule Mark_indel:
     input:
         "vcf/indel/raw.indel.vcf.gz"
@@ -286,7 +273,6 @@ rule Mark_indel:
         &> {log}
         """
 
-# Step 14: Exclude filtered Indels
 rule Filter_indel:
     input:
         "vcf/indel/filter.indel.vcf.gz"
@@ -304,7 +290,6 @@ rule Filter_indel:
         &> {log}
         """
 
-# Step 15: Merge SNPs and Indels
 rule MergeSNPandINDEL:
     input:
         "vcf/snp/filtered.snp.vcf.gz",
@@ -322,7 +307,6 @@ rule MergeSNPandINDEL:
         &> {log}
         """
 
-# Step 16: Filter VCF by Missing Rate
 rule VCFMissingRateFilter:
     input:
         "vcf/filtered.vcf.gz"
