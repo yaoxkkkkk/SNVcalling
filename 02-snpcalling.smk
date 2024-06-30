@@ -3,6 +3,7 @@ configfile: "SNPcalling_config.yaml"
 
 # 提取文件名的基部分（去除路径和扩展名）
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
+fastq_suffix = config.get("fastq_suffix", ".fastq.gz")
 
 rule all:
     input:
@@ -18,11 +19,11 @@ rule all:
 
 rule QualityControlfastp:
     input:
-        "raw_data/{sample}_1.fastq.gz",
-        "raw_data/{sample}_2.fastq.gz"
+        f"raw_data/{{sample}}_1{fastq_suffix}",
+        f"raw_data/{{sample}}_2{fastq_suffix}"
     output:
-        "clean_data/{sample}.1_clean.fq.gz",
-        "clean_data/{sample}.2_clean.fq.gz",
+        "clean_data/{sample}_1_clean.fq.gz",
+        "clean_data/{sample}_2_clean.fq.gz",
         "clean_data/{sample}.fastp.html"
     log:
         "logs/fastp/{sample}.log"
