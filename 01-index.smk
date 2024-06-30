@@ -1,17 +1,12 @@
 import os
+configfile: "config.yaml"
 
 # Extract basename of fasta file (part between path and extension name)
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 
 rule all:
     input:
-        expand("genome_index/{ref_basename}.amb", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.ann", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.bwt", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.pac", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.sa", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.fai", ref_basename=ref_basename),
-        expand("genome_index/{ref_basename}.dict", ref_basename=ref_basename)
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"])
 
 rule bwa_index:
     input:
