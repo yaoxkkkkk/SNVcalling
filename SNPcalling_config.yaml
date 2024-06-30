@@ -6,6 +6,11 @@ ref: " "
 # Fastq file suffix
 fastq_suffix: " " # Defualt is ".fq.gz"
 
+# fastp parameters
+qualified_quality_phred: 20
+unqualified_percent_limit: 40
+trim_front: 10
+
 # GATK filter threshold
 ## SNP
 QD_snp: 2.0
