@@ -1,25 +1,16 @@
-# Load config file and parameters
-ref = config["ref"]
-QD_snp = config["QD_snp"]
-MQ_snp = config["MQ_snp"]
-FS_snp = config["FS_snp"]
-SOR_snp = config["SOR_snp"]
-MQRS_snp = config["MQRS_snp"]
-RPRS_snp = config["RPRS_snp"]
-QUAL_snp = config["QUAL_snp"]
-QD_indel = config["QD_indel"]
-FS_indel = config["FS_indel"]
-SOR_indel = config["SOR_indel"]
-RPRS_indel = config["RPRS_indel"]
-QUAL_indel = config["QUAL_indel"]
-missingrate = config["missingrate"]
-maf = config["maf"]
+import os
+
+# Load the config file
+configfile: "SNPcalling_config.yaml"
+
+# 提取文件名的基部分（去除路径和扩展名）
+ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 
 # Target file
 rule all:
     input:
-        expand("mapping/{sample}.sorted.markdup.bam",sample=config["sample"]),
-        expand("vcf/gvcf/{sample}.g.vcf.gz",sample=config["sample"]),
+        expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
         "vcf/raw.vcf.gz",
         "vcf/gvcf/vcf.list",
         "vcf/snp/filtered.snp.vcf.gz",
@@ -28,101 +19,112 @@ rule all:
         "vcf/filtered.vcf.gz",
         "vcf/clean"
 
-# rule fastp:
-    # input:
-        # "raw_data/{sample}_1.fastq.gz",
-        # "raw_data/{sample}_2.fastq.gz"
-    # output:
-        # "clean_data/{sample}.1_clean.fq.gz",
-        # "clean_data/{sample}.2_clean.fq.gz",
-        # "clean_data/{sample}.fastp.html"
-    # log:
-        # "logs/fastp/{sample}.log"
-    # shell:
-        # "fastp \
-        # --thread 6 \
-        # -i {input[0]} \
-        # -I {input[1]} \
-        # -o {output[0]} \
-        # -O {output[1]} \
-        # -h {output[2]} \
-        # &> {log}"
+# Step 1: Quality Control with fastp
+rule fastp:
+    input:
+        "raw_data/{sample}_1.fastq.gz",
+        "raw_data/{sample}_2.fastq.gz"
+    output:
+        "clean_data/{sample}.1_clean.fq.gz",
+        "clean_data/{sample}.2_clean.fq.gz",
+        "clean_data/{sample}.fastp.html"
+    log:
+        "logs/fastp/{sample}.log"
+    shell:
+        """
+        fastp \
+        --thread 6 \
+        -i {input[0]} \
+        -I {input[1]} \
+        -o {output[0]} \
+        -O {output[1]} \
+        -h {output[2]} \
+        &> {log}
+        """
 
-# rule bwa_map:
-    # input:
-        # "clean_data/{sample}_trim_clean_1.fq.gz",
-        # "clean_data/{sample}_trim_clean_2.fq.gz",
-        # index_1=f"{ref}.amb",
-        # index_2=f"{ref}.ann",
-        # index_3=f"{ref}.bwt",
-        # index_4=f"{ref}.pac",
-        # index_5=f"{ref}.sa"
-    # output:
-        # temp("mapping/{sample}.sorted.bam")
-    # threads:4
-    # params:
-        # rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA"
-    # log:
-        # "logs/bwa/bwa_map_{sample}.log"
-    # shell:
-        # """
-        # bwa mem \
-        # -R '{params.rg}' \
-        # -t {threads} \
-        # {ref} {input[0]} {input[1]} \
-        # | samtools view -Sb \
-        # | samtools sort > {output} \
-		# &> {log}
-        # """
+# Step 2: Mapping with BWA
+rule bwa_map:
+    input:
+        "clean_data/{sample}.1_clean.fq.gz",
+        "clean_data/{sample}.2_clean.fq.gz",
+        index_1=f"{config['ref']}.amb",
+        index_2=f"{config['ref']}.ann",
+        index_3=f"{config['ref']}.bwt",
+        index_4=f"{config['ref']}.pac",
+        index_5=f"{config['ref']}.sa"
+    output:
+        temp("mapping/{sample}.sorted.bam")
+    threads: 4
+    params:
+        rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA"
+    log:
+        "logs/bwa/bwa_map_{sample}.log"
+    shell:
+        """
+        bwa mem \
+        -R '{params.rg}' \
+        -t {threads} \
+        {config['ref']} {input[0]} {input[1]} \
+        | samtools view -Sb \
+        | samtools sort > {output} \
+        &> {log}
+        """
 
-# rule RemoveDuplicates:
-    # input:
-        # input_bam="mapping/{sample}.sorted.bam"
-    # output:
-        # output_bam="mapping/{sample}.sorted.markdup.bam",
-        # metrics_txt="mapping/{sample}.sorted.markdup_metrics.txt"
-    # log:
-        # "logs/RemoveDuplicates_{sample}.log"
-    # shell:
-        # """
-        # gatk MarkDuplicates \
-        # -I {input} \
-        # -O {output[0]} \
-        # -M {output[1]} \
-        # --REMOVE_DUPLICATES true \
-        # --CREATE_INDEX true \
-        # &> {log}
-        # """
+# Step 3: Remove Duplicates with GATK
+rule RemoveDuplicates:
+    input:
+        "mapping/{sample}.sorted.bam"
+    output:
+        "mapping/{sample}.sorted.markdup.bam",
+        "mapping/{sample}.sorted.markdup_metrics.txt"
+    log:
+        "logs/RemoveDuplicates_{sample}.log"
+    shell:
+        """
+        gatk MarkDuplicates \
+        -I {input} \
+        -O {output[0]} \
+        -M {output[1]} \
+        --REMOVE_DUPLICATES true \
+        --CREATE_INDEX true \
+        &> {log}
+        """
 
+# Step 4: Call Variants with HaplotypeCaller
 rule HaplotypeCaller:
     input:
-        "mapping/{sample}.sorted.markdup.bam"       
+        "mapping/{sample}.sorted.markdup.bam"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz"
     log:
         "logs/vcf/gvcf/{sample}.gvcf.log"
-    threads:4
-    resources: mem_mb=32768
+    threads: 4
+    resources:
+        mem_mb=32768
     shell:
         """
         gatk HaplotypeCaller \
-        -R {ref} \
+        -R {config['ref']} \
         -I {input[0]} \
         -ERC GVCF \
         -O {output} \
         &> {log}
         """
 
+# Step 5: Create GVCF list
 rule ExtractVCFlist:
     input:
-        expand("vcf/gvcf/{sample}.g.vcf.gz",sample=config["sample"])
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
     output:
         "vcf/gvcf/vcf.list"
     params:
         gvcf_dir="vcf/gvcf/"
     shell:
-        "find {params.gvcf_dir} -name '*.gz' > {output}"
-        
+        """
+        find {params.gvcf_dir} -name '*.g.vcf.gz' > {output}
+        """
+
+# Step 6: Consolidate GVCFs
 rule ConsolidateGVCFs:
     input:
         "vcf/gvcf/vcf.list"
@@ -133,12 +135,13 @@ rule ConsolidateGVCFs:
     shell:
         """
         gatk CombineGVCFs  \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
         -O {output} \
         &> {log}
         """
 
+# Step 7: Genotype GVCFs
 rule GenotypeGVCFs:
     input:
         "vcf/cohort.g.vcf.gz"
@@ -149,12 +152,13 @@ rule GenotypeGVCFs:
     shell:
         """
         gatk GenotypeGVCFs \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
         -O {output} \
         &> {log}
         """
 
+# Step 8: Select SNPs
 rule select_snp:
     input:
         "vcf/raw.vcf.gz"
@@ -171,6 +175,7 @@ rule select_snp:
         &> {log}
         """
 
+# Step 9: Filter SNPs
 rule mark_snp:
     input:
         "vcf/snp/raw.snp.vcf.gz"
@@ -181,26 +186,27 @@ rule mark_snp:
     shell:
         """
         gatk VariantFiltration \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
-        --filter-expression "QD < {QD_snp}" \
+        --filter-expression "QD < {config['QD_snp']}" \
         --filter-name 'SNP_QD_filter' \
-        --filter-expression "MQ < {MQ_snp}" \
+        --filter-expression "MQ < {config['MQ_snp']}" \
         --filter-name 'SNP_MQ_filter' \
-        --filter-expression "FS > {FS_snp}" \
+        --filter-expression "FS > {config['FS_snp']}" \
         --filter-name 'SNP_FS_filter' \
-        --filter-expression "SOR > {SOR_snp}" \
+        --filter-expression "SOR > {config['SOR_snp']}" \
         --filter-name 'SNP_SOR_filter' \
-        --filter-expression "MQRankSum < {MQRS_snp}" \
+        --filter-expression "MQRankSum < {config['MQRS_snp']}" \
         --filter-name 'SNP_MQRS_filter' \
-        --filter-expression "ReadPosRankSum < {RPRS_snp}" \
+        --filter-expression "ReadPosRankSum < {config['RPRS_snp']}" \
         --filter-name 'SNP_RPRS_filter' \
-        --filter-expression "QUAL < {QUAL_snp}" \
+        --filter-expression "QUAL < {config['QUAL_snp']}" \
         --filter-name 'SNP_QUAL_filter' \
         -O {output} \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 10: Exclude filtered SNPs
 rule filter_snp:
     input:
         "vcf/snp/filter.snp.vcf.gz"
@@ -211,13 +217,14 @@ rule filter_snp:
     shell:
         """
         gatk SelectVariants \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
         --exclude-filtered \
         -O {output} \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 11: Filter SNPs by Missing Rate and MAF
 rule SNPMissingRateAndMAFFilter:
     input:
         "vcf/snp/filtered.snp.vcf.gz"
@@ -229,13 +236,14 @@ rule SNPMissingRateAndMAFFilter:
         """
         vcftools \
         --gzvcf {input} \
-        --max-missing {missingrate} \
-        --maf {maf} \
+        --max-missing {config['missingrate']} \
+        --maf {config['maf']} \
         --out {output} \
         --recode \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 12: Select Indels
 rule select_indel:
     input:
         "vcf/raw.vcf.gz"
@@ -251,7 +259,8 @@ rule select_indel:
         --select-type-to-include INDEL \
         &> {log}
         """
-        
+
+# Step 13: Filter Indels
 rule mark_indel:
     input:
         "vcf/indel/raw.indel.vcf.gz"
@@ -262,22 +271,23 @@ rule mark_indel:
     shell:
         """
         gatk VariantFiltration \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
-        --filter-expression "QD < {QD_indel}" \
+        --filter-expression "QD < {config['QD_indel']}" \
         --filter-name 'INDEL_QD_filter' \
-        --filter-expression "FS > {FS_indel}" \
+        --filter-expression "FS > {config['FS_indel']}" \
         --filter-name 'INDEL_FS_filter' \
-        --filter-expression "SOR > {SOR_indel}" \
+        --filter-expression "SOR > {config['SOR_indel']}" \
         --filter-name 'INDEL_SOR_filter' \
-        --filter-expression "ReadPosRankSum < {RPRS_indel}" \
+        --filter-expression "ReadPosRankSum < {config['RPRS_indel']}" \
         --filter-name 'INDEL_RPRS_filter' \
-        --filter-expression "QUAL < {QUAL_indel}" \
+        --filter-expression "QUAL < {config['QUAL_indel']}" \
         --filter-name 'INDEL_QUAL_filter' \
         -O {output} \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 14: Exclude filtered Indels
 rule filter_indel:
     input:
         "vcf/indel/filter.indel.vcf.gz"
@@ -288,13 +298,14 @@ rule filter_indel:
     shell:
         """
         gatk SelectVariants \
-        -R {ref} \
+        -R {config['ref']} \
         -V {input} \
         --exclude-filtered \
         -O {output} \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 15: Merge SNPs and Indels
 rule MergeSNPandINDEL:
     input:
         "vcf/snp/filtered.snp.vcf.gz",
@@ -309,9 +320,10 @@ rule MergeSNPandINDEL:
         -I {input[0]} \
         -I {input[1]} \
         -O {output} \
-         &> {log}
+        &> {log}
         """
-        
+
+# Step 16: Filter VCF by Missing Rate
 rule VCFMissingRateFilter:
     input:
         "vcf/filtered.vcf.gz"
@@ -323,8 +335,8 @@ rule VCFMissingRateFilter:
         """
         vcftools \
         --gzvcf {input} \
-        --max-missing {missingrate} \
+        --max-missing {config['missingrate']} \
         --out {output} \
         --recode \
-         &> {log}
+        &> {log}
         """
