@@ -20,7 +20,7 @@ rule all:
         "vcf/clean"
 
 # Step 1: Quality Control with fastp
-rule fastp:
+rule QualityControlfastp:
     input:
         "raw_data/{sample}_1.fastq.gz",
         "raw_data/{sample}_2.fastq.gz"
@@ -43,7 +43,7 @@ rule fastp:
         """
 
 # Step 2: Mapping with BWA
-rule bwa_map:
+rule BWA_map:
     input:
         "clean_data/{sample}.1_clean.fq.gz",
         "clean_data/{sample}.2_clean.fq.gz",
@@ -159,7 +159,7 @@ rule GenotypeGVCFs:
         """
 
 # Step 8: Select SNPs
-rule select_snp:
+rule Select_snp:
     input:
         "vcf/raw.vcf.gz"
     output:
@@ -176,7 +176,7 @@ rule select_snp:
         """
 
 # Step 9: Filter SNPs
-rule mark_snp:
+rule Mark_snp:
     input:
         "vcf/snp/raw.snp.vcf.gz"
     output:
@@ -207,7 +207,7 @@ rule mark_snp:
         """
 
 # Step 10: Exclude filtered SNPs
-rule filter_snp:
+rule Filter_snp:
     input:
         "vcf/snp/filter.snp.vcf.gz"
     output:
@@ -244,7 +244,7 @@ rule SNPMissingRateAndMAFFilter:
         """
 
 # Step 12: Select Indels
-rule select_indel:
+rule Select_indel:
     input:
         "vcf/raw.vcf.gz"
     output:
@@ -261,7 +261,7 @@ rule select_indel:
         """
 
 # Step 13: Filter Indels
-rule mark_indel:
+rule Mark_indel:
     input:
         "vcf/indel/raw.indel.vcf.gz"
     output:
@@ -288,7 +288,7 @@ rule mark_indel:
         """
 
 # Step 14: Exclude filtered Indels
-rule filter_indel:
+rule Filter_indel:
     input:
         "vcf/indel/filter.indel.vcf.gz"
     output:
