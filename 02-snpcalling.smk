@@ -5,6 +5,10 @@ configfile: "SNPcalling_config.yaml"
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix = config.get("fastq_suffix", ".fq.gz")
 
+qualified_quality_phred = config.get("qualified_quality_phred", 20)
+unqualified_percent_limit = config.get("unqualified_percent_limit", 40)
+trim_front = config.get("trim_front", 10)
+
 rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
@@ -36,6 +40,9 @@ rule QualityControlfastp:
         -o {output[0]} \
         -O {output[1]} \
         -h {output[2]} \
+        -q {qualified_quality_phred} \
+        -u {unqualified_percent_limit} \
+        -f {trim_front} \
         &> {log}
         """
 
