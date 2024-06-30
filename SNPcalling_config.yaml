@@ -1,3 +1,26 @@
 # config.yaml
 
 ref: " " # Absolute path to the genome fasta file
+
+# GATK filter threshold
+## SNP
+QD_snp: 2.0
+MQ_snp: 40.0
+FS_snp: 60.0
+SOR_snp: 3.0
+MQRS_snp: -10.0
+RPRS_snp: -8.0
+QUAL_snp: 20.0
+## INDEL
+QD_indel: 2.0
+FS_indel: 200.0
+SOR_indel: 10.0
+RPRS_indel: -20.0
+QUAL_indel: 20.0
+
+# VCFtools filter threshold
+missingrate: 0.9
+maf: 0.05
+
+# Sample list
+sample:
