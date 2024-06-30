@@ -47,11 +47,11 @@ rule BWA_map:
     input:
         "clean_data/{sample}.1_clean.fq.gz",
         "clean_data/{sample}.2_clean.fq.gz",
-        index_1=f"{config['ref']}.amb",
-        index_2=f"{config['ref']}.ann",
-        index_3=f"{config['ref']}.bwt",
-        index_4=f"{config['ref']}.pac",
-        index_5=f"{config['ref']}.sa"
+        "genome_index/{ref_basename}.amb",
+        "genome_index/{ref_basename}.ann",
+        "genome_index/{ref_basename}.bwt",
+        "genome_index/{ref_basename}.pac",
+        "genome_index/{ref_basename}.sa"
     output:
         temp("mapping/{sample}.sorted.bam")
     threads: 4
@@ -93,7 +93,9 @@ rule RemoveDuplicates:
 # Step 4: Call Variants with HaplotypeCaller
 rule HaplotypeCaller:
     input:
-        "mapping/{sample}.sorted.markdup.bam"
+        "mapping/{sample}.sorted.markdup.bam",
+        "genome_index/{ref_basename}.dict",
+        "genome_index/{ref_basename}.fai"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz"
     log:
