@@ -1,5 +1,4 @@
 import os
-configfile: "SNPcalling_config.yaml"
 
 # 提取文件名的基部分（去除路径和扩展名）
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
