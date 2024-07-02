@@ -5,7 +5,8 @@ ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 
 rule all:
     input:
-        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"])
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"]),
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["1.ht2", "2.ht2", "3.ht2", "4.ht2", "5.ht2", "6.ht2", "7.ht2", "8.ht2"])
 
 rule bwa_index:
     input:
@@ -72,6 +73,6 @@ rule hisat2_index:
         """
         hisat2-build \
         {input.reference_genome} \
-        genome_index/{ref_basename} \
+        genome_index/{wildcards.ref_basename} \
         &> {log}
         """
