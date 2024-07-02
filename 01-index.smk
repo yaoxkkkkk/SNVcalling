@@ -26,7 +26,7 @@ rule bwa_index:
         &> {log}
         """
 
-rule fai_index:
+rule samtools_fai_index:
     input:
         reference_genome=config["ref"]
     output:
@@ -39,7 +39,7 @@ rule fai_index:
         mv {input.reference_genome}.fai {output}
         """
 
-rule dict_index:
+rule gatk_dict_index:
     input:
         reference_genome=config["ref"]
     output:
@@ -51,5 +51,27 @@ rule dict_index:
         gatk CreateSequenceDictionary \
         -R {input.reference_genome} \
         -O {output} \
+        &> {log}
+        """
+
+rule hisat2_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.1.ht2",
+        "genome_index/{ref_basename}.2.ht2",
+        "genome_index/{ref_basename}.3.ht2",
+        "genome_index/{ref_basename}.4.ht2",
+        "genome_index/{ref_basename}.5.ht2",
+        "genome_index/{ref_basename}.6.ht2",
+        "genome_index/{ref_basename}.7.ht2",
+        "genome_index/{ref_basename}.8.ht2"
+    log:
+        "logs/index/hisat2_index_{ref_basename}.log"
+    shell:
+        """
+        hisat2-build \
+        {input.reference_genome} \
+        genome_index/{ref_basename} \
         &> {log}
         """
