@@ -28,12 +28,13 @@ rule QualityControlfastp:
         "clean_data/{sample}_1_clean.fq.gz",
         "clean_data/{sample}_2_clean.fq.gz",
         "clean_data/{sample}.fastp.html"
+    threads: 2
     log:
         "logs/fastp/{sample}.log"
     shell:
         """
         fastp \
-        --thread 6 \
+        --thread {threads} \
         -i {input[0]} \
         -I {input[1]} \
         -o {output[0]} \
