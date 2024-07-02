@@ -56,7 +56,7 @@ rule BWA_map:
         "genome_index/{ref_basename}.sa"
     output:
         temp("mapping/{sample}.sorted.bam")
-    threads: 4
+    threads: 8
     params:
         rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA"
     log:
