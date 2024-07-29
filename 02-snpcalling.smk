@@ -68,8 +68,7 @@ rule BWA_map:
         -R '{params.rg}' \
         -t {threads} \
         {config['ref']} {input[0]} {input[1]} \
-        | samtools view -Sb \
-        | samtools sort > {output} \
+        |samtools sort -@ {threads} -o {output} \
         &> {log}
         """
 
