@@ -18,8 +18,8 @@
 
 ## What to input
 
-- Species reference genome
-- Population resequence data
+- Reference genome file
+- WGS fastq files
 
 ## What to output
 
