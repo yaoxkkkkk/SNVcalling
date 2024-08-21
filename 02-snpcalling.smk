@@ -63,7 +63,7 @@ rule BWA_map:
         bwa mem \
         -R '{params.rg}' \
         -t {threads} \
-        {config['ref']} {input[0]} {input[1]} \
+        {config["ref"]} {input[0]} {input[1]} \
         |samtools sort -@ {threads} -o {output} \
         &> {log}
         """
