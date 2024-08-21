@@ -11,7 +11,11 @@ rule bwa_index:
     input:
         reference_genome=config["ref"]
     output:
-        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
+        "genome_index/{ref_basename}.amb",
+        "genome_index/{ref_basename}.ann",
+        "genome_index/{ref_basename}.bwt",
+        "genome_index/{ref_basename}.pac",
+        "genome_index/{ref_basename}.sa"
     log:
         "logs/index/bwa_index_{ref_basename}.log"
     shell:
