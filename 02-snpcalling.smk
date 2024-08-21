@@ -11,7 +11,7 @@ trim_front = config.get("trim_front", 10)
 rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
-        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
         "vcf/raw.vcf.gz",
         "vcf/gvcf/vcf.list",
         "vcf/snp/filtered.snp.vcf.gz",
