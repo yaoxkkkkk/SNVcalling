@@ -56,7 +56,7 @@ fastq_suffix: " " # Default value is ".fq.gz"
 2.3 Fill in the name of the samples. The samples name need to be filled with specific format like:
 
 ```shell
-# Sample list
+# Sample list, samples' name should start with letters.
 sample:
     - sample1
     - sample2
