@@ -12,6 +12,13 @@ rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
+        "vcf/raw.vcf.gz",
+        "vcf/gvcf/vcf.list",
+        "vcf/snp/filtered.snp.vcf.gz",
+        "vcf/snp/clean.maf.snp",
+        "vcf/indel/filtered.indel.vcf.gz",
+        "vcf/filtered.vcf.gz",
+        "vcf/clean"
 
 rule QualityControlfastp:
     input:
