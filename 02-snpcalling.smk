@@ -50,7 +50,7 @@ rule BWA_map:
     input:
         "clean_data/{sample}_1_clean.fq.gz",
         "clean_data/{sample}_2_clean.fq.gz",
-        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
+        config["ref"]
     output:
         "mapping/{sample}.sorted.bam"
     threads: 8
@@ -63,7 +63,7 @@ rule BWA_map:
         bwa mem \
         -R '{params.rg}' \
         -t {threads} \
-        {config["ref"]} {input[0]} {input[1]} \
+        {input[2]} {input[0]} {input[1]} \
         |samtools sort -@ {threads} -o {output} \
         &> {log}
         """
