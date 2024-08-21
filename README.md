@@ -58,12 +58,25 @@ fastq_suffix: " " # Default value is ".fq.gz"
 ```shell
 # Sample list
 sample:
-    - "1_5_001"
-    - "1_5_002"
-    - "1_5_003"
-    - "1_5_004"
-    - "1_5_005"
-    - "1_5_006"
+    - sample1
+    - sample2
+    - sample3
+    - sample4
+    - ...
+    - samplen
+```
+
+You can use following command to add sample list to the config file if you have a sample list txt file (for example `sample.list`):
+
+```shell
+# sample.list
+sample1
+sample2
+sample3
+sample4
+
+# Add samples to the config file:
+sed 's/^/    - /' sample.list >> ${working_dir}/SNPcalling_config.yaml
 ```
 
 ### 3. Submit the pipeline to HPC cluster
@@ -74,7 +87,7 @@ For example:
 snakemake \
 	--snakefile ${working_dir}/00-script/snake_pipeline/${snakemake_file} \
 	-d ${working_dir} \
-    --config ${working_dir}/SNPcalling_config.yaml \
+    	--configfile ${working_dir}/SNPcalling_config.yaml \
 	--cores ${cores_num} \
 	--rerun-incomplete \
 	--latency-wait 360 \
