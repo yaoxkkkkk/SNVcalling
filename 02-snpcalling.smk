@@ -11,14 +11,7 @@ trim_front = config.get("trim_front", 10)
 rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
-        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
-        "vcf/raw.vcf.gz",
-        "vcf/gvcf/vcf.list",
-        "vcf/snp/filtered.snp.vcf.gz",
-        "vcf/snp/clean.maf.snp",
-        "vcf/indel/filtered.indel.vcf.gz",
-        "vcf/filtered.vcf.gz",
-        "vcf/clean"
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
 
 rule QualityControlfastp:
     input:
@@ -40,6 +33,7 @@ rule QualityControlfastp:
         -o {output[0]} \
         -O {output[1]} \
         -h {output[2]} \
+        -j /dev/null \
         -q {qualified_quality_phred} \
         -u {unqualified_percent_limit} \
         -f {trim_front} \
@@ -48,14 +42,14 @@ rule QualityControlfastp:
 
 rule BWA_map:
     input:
-        "clean_data/{sample}_1_clean.fq.gz",
-        "clean_data/{sample}_2_clean.fq.gz",
-        config["ref"]
+        r1="clean_data/{sample}_1_clean.fq.gz",
+        r2="clean_data/{sample}_2_clean.fq.gz"
     output:
-        "mapping/{sample}.sorted.bam"
+        temp("mapping/{sample}.sorted.bam")
     threads: 8
     params:
-        rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA"
+        rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA",
+        prefix="genome_index/{wildcards.ref_basename}"
     log:
         "logs/bwa/bwa_map_{sample}.log"
     shell:
@@ -63,7 +57,7 @@ rule BWA_map:
         bwa mem \
         -R '{params.rg}' \
         -t {threads} \
-        {input[2]} {input[0]} {input[1]} \
+        {params.prefix} {input.r1} {input.r2} \
         |samtools sort -@ {threads} -o {output} \
         &> {log}
         """
@@ -73,7 +67,7 @@ rule RemoveDuplicates:
         "mapping/{sample}.sorted.bam"
     output:
         "mapping/{sample}.sorted.markdup.bam",
-        "mapping/{sample}.sorted.markdup_metrics.txt"
+        "mapping/markdup_metrics/{sample}.sorted.markdup_metrics.txt"
     log:
         "logs/RemoveDuplicates_{sample}.log"
     shell:
@@ -89,21 +83,23 @@ rule RemoveDuplicates:
 
 rule HaplotypeCaller:
     input:
-        "mapping/{sample}.sorted.markdup.bam",
-        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["dict", "fai"])
+        reference_genome=config["ref"],
+        bam="mapping/{sample}.sorted.markdup.bam"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz"
     log:
         "logs/vcf/gvcf/{sample}.gvcf.log"
     threads: 4
+    params:
+        ERC="GVCF"
     resources:
         mem_mb=32768
     shell:
         """
         gatk HaplotypeCaller \
-        -R {config['ref']} \
-        -I {input[0]} \
-        -ERC GVCF \
+        -R {input.reference_genome} \
+        -I {input.bam} \
+        -ERC {params.ERC} \
         -O {output} \
         &> {log}
         """
