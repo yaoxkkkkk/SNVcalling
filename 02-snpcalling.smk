@@ -27,7 +27,7 @@ rule QualityControlfastp:
     output:
         "clean_data/{sample}_1_clean.fq.gz",
         "clean_data/{sample}_2_clean.fq.gz",
-        "clean_data/{sample}.fastp.html"
+        "logs/fastp/fastp_report/{sample}.fastp.html"
     threads: 2
     log:
         "logs/fastp/{sample}.log"
@@ -48,15 +48,11 @@ rule QualityControlfastp:
 
 rule BWA_map:
     input:
-        "clean_data/{sample}.1_clean.fq.gz",
-        "clean_data/{sample}.2_clean.fq.gz",
-        "genome_index/{ref_basename}.amb",
-        "genome_index/{ref_basename}.ann",
-        "genome_index/{ref_basename}.bwt",
-        "genome_index/{ref_basename}.pac",
-        "genome_index/{ref_basename}.sa"
+        "clean_data/{sample}_1_clean.fq.gz",
+        "clean_data/{sample}_2_clean.fq.gz",
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
     output:
-        temp("mapping/{sample}.sorted.bam")
+        "mapping/{sample}.sorted.bam"
     threads: 8
     params:
         rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA"
@@ -94,8 +90,7 @@ rule RemoveDuplicates:
 rule HaplotypeCaller:
     input:
         "mapping/{sample}.sorted.markdup.bam",
-        "genome_index/{ref_basename}.dict",
-        "genome_index/{ref_basename}.fai"
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["dict", "fai"])
     output:
         "vcf/gvcf/{sample}.g.vcf.gz"
     log:
