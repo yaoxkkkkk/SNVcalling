@@ -56,7 +56,7 @@ rule BWA_map:
     threads: 8
     params:
         rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA",
-        prefix="genome_index/{wildcards.ref_basename}"
+        prefix=f"genome_index/{ref_basename}"
     log:
         "logs/bwa/bwa_map_{sample}.log"
     shell:
@@ -65,7 +65,7 @@ rule BWA_map:
         -R '{params.rg}' \
         -t {threads} \
         {params.prefix} {input.r1} {input.r2} \
-        |samtools sort -@ {threads} -o {output} \
+        | samtools sort -@ {threads} -o {output} \
         &> {log}
         """
 
