@@ -76,7 +76,7 @@ rule RemoveDuplicates:
         "mapping/{sample}.sorted.markdup.bam",
         "mapping/markdup_metrics/{sample}.sorted.markdup_metrics.txt"
     log:
-        "logs/RemoveDuplicates_{sample}.log"
+        "logs/gatk/RemoveDuplicates_{sample}.log"
     shell:
         """
         gatk MarkDuplicates \
@@ -95,7 +95,7 @@ rule HaplotypeCaller:
     output:
         "vcf/gvcf/{sample}.g.vcf.gz"
     log:
-        "logs/vcf/gvcf/{sample}.gvcf.log"
+        "logs/gatk/vcf/gvcf/{sample}.gvcf.log"
     threads: 4
     params:
         ERC="GVCF"
@@ -129,7 +129,7 @@ rule ConsolidateGVCFs:
     output:
         "vcf/cohort.g.vcf.gz"
     log:
-        "logs/vcf/ConsolidateGVCFs.log"
+        "logs/gatk/vcf/ConsolidateGVCFs.log"
     shell:
         """
         gatk CombineGVCFs  \
@@ -145,7 +145,7 @@ rule GenotypeGVCFs:
     output:
         "vcf/raw.vcf.gz"
     log:
-        "logs/vcf/GenotypeGVCFs.log"
+        "logs/gatk/vcf/GenotypeGVCFs.log"
     shell:
         """
         gatk GenotypeGVCFs \
@@ -161,7 +161,7 @@ rule Select_snp:
     output:
         "vcf/snp/raw.snp.vcf.gz"
     log:
-        "logs/vcf/snp.vcf.log"
+        "logs/gatk/vcf/snp.vcf.log"
     shell:
         """
         gatk SelectVariants \
@@ -177,7 +177,7 @@ rule Mark_snp:
     output:
         "vcf/snp/filter.snp.vcf.gz"
     log:
-        "logs/vcf/snp.filter.vcf.log"
+        "logs/gatk/vcf/snp.filter.vcf.log"
     shell:
         """
         gatk VariantFiltration \
@@ -207,7 +207,7 @@ rule Filter_snp:
     output:
         "vcf/snp/filtered.snp.vcf.gz"
     log:
-        "logs/vcf/snp.filtered.vcf.log"
+        "logs/gatk/vcf/snp.filtered.vcf.log"
     shell:
         """
         gatk SelectVariants \
@@ -224,7 +224,7 @@ rule SNPMissingRateAndMAFFilter:
     output:
         "vcf/snp/clean.maf.snp"
     log:
-        "logs/vcf/clean.maf.snp.vcf.log"
+        "logs/gatk/vcf/clean.maf.snp.vcf.log"
     shell:
         """
         vcftools \
@@ -242,7 +242,7 @@ rule Select_indel:
     output:
         "vcf/indel/raw.indel.vcf.gz"
     log:
-        "logs/vcf/indel.vcf.log"
+        "logs/gatk/vcf/indel.vcf.log"
     shell:
         """
         gatk SelectVariants \
@@ -258,7 +258,7 @@ rule Mark_indel:
     output:
         "vcf/indel/filter.indel.vcf.gz"
     log:
-        "logs/vcf/indel.filter.vcf.log"
+        "logs/gatk/vcf/indel.filter.vcf.log"
     shell:
         """
         gatk VariantFiltration \
@@ -284,7 +284,7 @@ rule Filter_indel:
     output:
         "vcf/indel/filtered.indel.vcf.gz"
     log:
-        "logs/vcf/indel.filtered.vcf.log"
+        "logs/gatk/vcf/indel.filtered.vcf.log"
     shell:
         """
         gatk SelectVariants \
@@ -302,7 +302,7 @@ rule MergeSNPandINDEL:
     output:
         "vcf/filtered.vcf.gz"
     log:
-        "logs/vcf/filtered.vcf.log"
+        "logs/gatk/vcf/filtered.vcf.log"
     shell:
         """
         gatk MergeVcfs  \
@@ -318,7 +318,7 @@ rule VCFMissingRateFilter:
     output:
         "vcf/clean"
     log:
-        "logs/vcf/clean.vcf.log"
+        "logs/gatk/vcf/clean.vcf.log"
     shell:
         """
         vcftools \
