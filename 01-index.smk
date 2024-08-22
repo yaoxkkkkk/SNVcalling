@@ -36,7 +36,7 @@ rule samtools_fai_index:
     shell:
         """
         samtools faidx {input.reference_genome} &> {log}
-        mv {input.reference_genome}.fai {output}
+        cp {input.reference_genome}.fai {output}
         """
 
 rule gatk_dict_index:
