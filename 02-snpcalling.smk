@@ -12,6 +12,7 @@ rule all:
     input:
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
+        expand("vcf/gvcf/{sample}.g.vcf.gz.tbi", sample=config["sample"]),
         "vcf/raw.vcf.gz",
         "vcf/gvcf/vcf.list",
         "vcf/snp/filtered.snp.vcf.gz",
@@ -93,7 +94,8 @@ rule HaplotypeCaller:
         reference_genome=config["ref"],
         bam="mapping/{sample}.sorted.markdup.bam"
     output:
-        "vcf/gvcf/{sample}.g.vcf.gz"
+        "vcf/gvcf/{sample}.g.vcf.gz",
+        "vcf/gvcf/{sample}.g.vcf.gz.tbi"
     log:
         "logs/gatk/vcf/gvcf/{sample}.gvcf.log"
     threads: 4
