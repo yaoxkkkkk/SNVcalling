@@ -11,6 +11,7 @@ trim_front = config.get("trim_front", 10)
 rule all:
     input:
         expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"]),
+        expand("clean_data/{sample}_{pair}_clean.fq.gz", sample=config["sample"], pair=["1", "2"]),
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz.tbi", sample=config["sample"]),
