@@ -22,7 +22,7 @@ rule all:
         "vcf/filtered.vcf.gz",
         "vcf/clean"
 
-rule bwa_index:
+rule BWA_index:
     input:
         reference_genome=config["ref"]
     output:
@@ -41,7 +41,7 @@ rule bwa_index:
         &> {log}
         """
 
-rule samtools_fai_index:
+rule Samtools_fai_index:
     input:
         reference_genome=config["ref"]
     output:
@@ -54,7 +54,7 @@ rule samtools_fai_index:
         cp {input.reference_genome}.fai {output}
         """
 
-rule gatk_dict_index:
+rule GATK_dict_index:
     input:
         reference_genome=config["ref"]
     output:
