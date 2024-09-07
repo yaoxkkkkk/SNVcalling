@@ -39,6 +39,8 @@ Please storage your resequence data in `raw_data/` folder and genome file in `ge
 
 ### 2. Prepare the config file
 
+The config file needs to be at the same folder of snakefile.
+
 2.1 Move the genome file to `genome_index/` folder and add the genome fasta file absolute path like:
 
 ```shell
