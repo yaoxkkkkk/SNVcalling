@@ -386,3 +386,20 @@ rule VCFMissingRateFilter:
         --recode \
         &> {log}
         """
+
+rule VCFMinorAlleleFrequencyFilter:
+    input:
+        "vcf/filtered.vcf.gz"
+    output:
+        "vcf/clean"
+    log:
+        "logs/gatk/vcf/clean.vcf.log"
+    shell:
+        """
+        vcftools \
+        --gzvcf {input} \
+        --max-missing {config['missingrate']} \
+        --out {output} \
+        --recode \
+        &> {log}
+        """
