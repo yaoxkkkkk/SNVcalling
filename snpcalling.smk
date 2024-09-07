@@ -10,6 +10,7 @@ trim_front = config.get("trim_front", 10)
 
 rule all:
     input:
+        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"]),
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz.tbi", sample=config["sample"]),
@@ -20,6 +21,53 @@ rule all:
         "vcf/indel/filtered.indel.vcf.gz",
         "vcf/filtered.vcf.gz",
         "vcf/clean"
+
+rule bwa_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.amb",
+        "genome_index/{ref_basename}.ann",
+        "genome_index/{ref_basename}.bwt",
+        "genome_index/{ref_basename}.pac",
+        "genome_index/{ref_basename}.sa"
+    log:
+        "logs/index/bwa_index_{ref_basename}.log"
+    shell:
+        """
+        bwa index \
+        -p genome_index/{wildcards.ref_basename} \
+        {input.reference_genome} \
+        &> {log}
+        """
+
+rule samtools_fai_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.fai"
+    log:
+        "logs/index/samtools_index_{ref_basename}.log"
+    shell:
+        """
+        samtools faidx {input.reference_genome} &> {log}
+        cp {input.reference_genome}.fai {output}
+        """
+
+rule gatk_dict_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.dict"
+    log:
+        "logs/index/gatk_index_{ref_basename}.log"
+    shell:
+        """
+        gatk CreateSequenceDictionary \
+        -R {input.reference_genome} \
+        -O {output} \
+        &> {log}
+        """
 
 rule QualityControlfastp:
     input:
@@ -51,7 +99,12 @@ rule QualityControlfastp:
 rule BWA_map:
     input:
         r1="clean_data/{sample}_1_clean.fq.gz",
-        r2="clean_data/{sample}_2_clean.fq.gz"
+        r2="clean_data/{sample}_2_clean.fq.gz",
+        "genome_index/{ref_basename}.amb",
+        "genome_index/{ref_basename}.ann",
+        "genome_index/{ref_basename}.bwt",
+        "genome_index/{ref_basename}.pac",
+        "genome_index/{ref_basename}.sa"
     output:
         temp("mapping/{sample}.sorted.bam")
     threads: 8
@@ -92,7 +145,9 @@ rule RemoveDuplicates:
 rule HaplotypeCaller:
     input:
         reference_genome=config["ref"],
-        bam="mapping/{sample}.sorted.markdup.bam"
+        bam="mapping/{sample}.sorted.markdup.bam",
+        "genome_index/{ref_basename}.fai",
+        "genome_index/{ref_basename}.dict"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz",
         "vcf/gvcf/{sample}.g.vcf.gz.tbi"
