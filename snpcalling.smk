@@ -1,5 +1,7 @@
 import os
 
+configfile: "SNPcalling_config.yaml"
+
 # 提取文件名的基部分（去除路径和扩展名）
 ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix = config.get("fastq_suffix", ".fq.gz")
@@ -374,7 +376,7 @@ rule VCFMissingRateFilter:
     input:
         "vcf/filtered.vcf.gz"
     output:
-        "vcf/clean"
+        "vcf/clean.missingrate"
     log:
         "logs/gatk/vcf/clean.vcf.log"
     shell:
@@ -389,15 +391,15 @@ rule VCFMissingRateFilter:
 
 rule VCFMinorAlleleFrequencyFilter:
     input:
-        "vcf/filtered.vcf.gz"
+        "vcf/clean.missingrate.recode.vcf"
     output:
-        "vcf/clean"
+        "vcf/clean.missingrate.maf"
     log:
         "logs/gatk/vcf/clean.vcf.log"
     shell:
         """
         vcftools \
-        --gzvcf {input} \
+        --vcf {input} \
         --max-missing {config['missingrate']} \
         --out {output} \
         --recode \
