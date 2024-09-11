@@ -41,7 +41,7 @@ Please storage your resequence data in `raw_data/` folder and genome file in `ge
 
 The config file needs to be at the same folder of snakefile.
 
-2.1 Move the genome file to `genome_index/` folder and add the genome fasta file absolute path like:
+#### 2.1 Move the genome file to `genome_index/` folder and add the genome fasta file absolute path like:
 
 ```shell
 # Absolute path to the genome fasta file
@@ -65,14 +65,14 @@ You can use the following command to generate the list.
 cat /workingdir/genome_index/genome.fasta | grep ">" | awk '{gsub(/^>/, "    - "); print}'
 ```
 
-2.2 Sometimes the fastq files may be ended with `.fastq.gz` or `.fq.gz`, specify the suffix of the fastq files if it's necessary.
+#### 2.2 Sometimes the fastq files may be ended with `.fastq.gz` or `.fq.gz`, specify the suffix of the fastq files if it's necessary.
 
 ```shell
 # Fastq file suffix
 fastq_suffix: " " # Default value is ".fq.gz"
 ```
 
-2.3 Fill in the name of the samples. The samples name need to be filled with specific format like:
+#### 2.3 Fill in the name of the samples. The samples name need to be filled with specific format like:
 
 ```shell
 # Sample list, samples' name should start with letters.
