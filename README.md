@@ -48,6 +48,23 @@ The config file needs to be at the same folder of snakefile.
 ref: "/workingdir/genome_index/genome.fasta" 
 ```
 
+And chromosome IDs to genotype variants by per chromosomes to parallise the process.
+
+```shell
+chromosomes:
+    - Chr01_hap1
+    - Chr02_hap1
+    - Chr03_hap1
+    - ...
+    - Chrnn_hap1
+```
+
+You can use the following command to generate the list.
+
+```shell
+cat /workingdir/genome_index/genome.fasta | grep ">" | awk '{gsub(/^>/, "    - "); print}'
+```
+
 2.2 Sometimes the fastq files may be ended with `.fastq.gz` or `.fq.gz`, specify the suffix of the fastq files if it's necessary.
 
 ```shell
