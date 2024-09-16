@@ -31,5 +31,8 @@ QUAL_indel: 20.0
 missingrate: 0.9
 maf: 0.05
 
+# Chromosome ID list
+chromosomes:
+
 # Sample list
 sample:
