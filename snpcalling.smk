@@ -407,7 +407,7 @@ rule SNPMissingRateAndMAFFilter:
         --maf {params.maf} \
         --recode \
         --stdout \
-        | gzip > {output} \
+        | pigz > {output} \
         &> {log}
         """
 		
@@ -427,6 +427,6 @@ rule VCFMissingRateFilter:
         --max-missing {params.missingrate} \
         --recode \
         --stdout \
-        | gzip > {output} \
+        | pigz > {output} \
         &> {log}
         """
