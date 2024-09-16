@@ -12,65 +12,15 @@ trim_front = config.get("trim_front", 10)
 
 rule all:
     input:
-        expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa", "fai", "dict"]),
-        expand("clean_data/{sample}_{pair}_clean.fq.gz", sample=config["sample"], pair=["1", "2"]),
         expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
-        expand("vcf/gvcf/{sample}.g.vcf.gz.tbi", sample=config["sample"]),
         "vcf/raw.vcf.gz",
         "vcf/gvcf/vcf.list",
-        "vcf/snp/filtered.snp.vcf.gz",
+        "vcf/snp/filter.snp.vcf.gz",
         "vcf/snp/clean.maf.snp",
-        "vcf/indel/filtered.indel.vcf.gz",
-        "vcf/filtered.vcf.gz",
+        "vcf/indel/filter.indel.vcf.gz",
+        "vcf/filter.vcf.gz",
         "vcf/clean"
-
-rule BWA_index:
-    input:
-        reference_genome=config["ref"]
-    output:
-        "genome_index/{ref_basename}.amb",
-        "genome_index/{ref_basename}.ann",
-        "genome_index/{ref_basename}.bwt",
-        "genome_index/{ref_basename}.pac",
-        "genome_index/{ref_basename}.sa"
-    log:
-        "logs/index/bwa_index_{ref_basename}.log"
-    shell:
-        """
-        bwa index \
-        -p genome_index/{wildcards.ref_basename} \
-        {input.reference_genome} \
-        &> {log}
-        """
-
-rule Samtools_fai_index:
-    input:
-        reference_genome=config["ref"]
-    output:
-        "genome_index/{ref_basename}.fai"
-    log:
-        "logs/index/samtools_index_{ref_basename}.log"
-    shell:
-        """
-        samtools faidx {input.reference_genome} &> {log}
-        cp {input.reference_genome}.fai {output}
-        """
-
-rule GATK_dict_index:
-    input:
-        reference_genome=config["ref"]
-    output:
-        "genome_index/{ref_basename}.dict"
-    log:
-        "logs/index/gatk_index_{ref_basename}.log"
-    shell:
-        """
-        gatk CreateSequenceDictionary \
-        -R {input.reference_genome} \
-        -O {output} \
-        &> {log}
-        """
 
 rule QualityControlfastp:
     input:
@@ -102,12 +52,7 @@ rule QualityControlfastp:
 rule BWA_map:
     input:
         r1="clean_data/{sample}_1_clean.fq.gz",
-        r2="clean_data/{sample}_2_clean.fq.gz",
-        "genome_index/{ref_basename}.amb",
-        "genome_index/{ref_basename}.ann",
-        "genome_index/{ref_basename}.bwt",
-        "genome_index/{ref_basename}.pac",
-        "genome_index/{ref_basename}.sa"
+        r2="clean_data/{sample}_2_clean.fq.gz"
     output:
         temp("mapping/{sample}.sorted.bam")
     threads: 8
@@ -133,7 +78,7 @@ rule RemoveDuplicates:
         "mapping/{sample}.sorted.markdup.bam",
         "mapping/markdup_metrics/{sample}.sorted.markdup_metrics.txt"
     log:
-        "logs/gatk/RemoveDuplicates_{sample}.log"
+        "logs/RemoveDuplicates_{sample}.log"
     shell:
         """
         gatk MarkDuplicates \
@@ -148,14 +93,12 @@ rule RemoveDuplicates:
 rule HaplotypeCaller:
     input:
         reference_genome=config["ref"],
-        bam="mapping/{sample}.sorted.markdup.bam",
-        "genome_index/{ref_basename}.fai",
-        "genome_index/{ref_basename}.dict"
+        bam="mapping/{sample}.sorted.markdup.bam"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz",
         "vcf/gvcf/{sample}.g.vcf.gz.tbi"
     log:
-        "logs/gatk/vcf/gvcf/{sample}.gvcf.log"
+        "logs/vcf/gvcf/{sample}.gvcf.log"
     threads: 4
     params:
         ERC="GVCF"
@@ -167,7 +110,7 @@ rule HaplotypeCaller:
         -R {input.reference_genome} \
         -I {input.bam} \
         -ERC {params.ERC} \
-        -O {output} \
+        -O {output[0]} \
         &> {log}
         """
 
@@ -183,224 +126,304 @@ rule ExtractVCFlist:
         find {params.gvcf_dir} -name '*.g.vcf.gz' > {output}
         """
 
-rule ConsolidateGVCFs:
+rule ConsolidateGVCFsPerChromosome:
     input:
-        "vcf/gvcf/vcf.list"
+        reference_genome=config["ref"],
+        vcflist="vcf/gvcf/vcf.list"
     output:
-        "vcf/cohort.g.vcf.gz"
+        temp("vcf/cohort_{chrom}.g.vcf.gz"),
+        temp("vcf/cohort_{chrom}.g.vcf.gz.tbi")
     log:
-        "logs/gatk/vcf/ConsolidateGVCFs.log"
+        "logs/vcf/ConsolidateGVCFs_{chrom}.log"
+    threads: 4
     shell:
         """
-        gatk CombineGVCFs  \
-        -R {config['ref']} \
-        -V {input} \
-        -O {output} \
+        gatk CombineGVCFs \
+        -R {input.reference_genome} \
+        -V {input.vcflist} \
+        -L {wildcards.chrom} \
+        -O {output[0]} \
         &> {log}
         """
 
-rule GenotypeGVCFs:
+rule GenotypeGVCFsPerChromosome:
     input:
-        "vcf/cohort.g.vcf.gz"
+        reference_genome=config["ref"],
+        cohort_gvcf="vcf/cohort_{chrom}.g.vcf.gz"
     output:
-        "vcf/raw.vcf.gz"
+        temp("vcf/raw_{chrom}.vcf.gz"),
+        temp("vcf/raw_{chrom}.vcf.gz.tbi")
     log:
-        "logs/gatk/vcf/GenotypeGVCFs.log"
+        "logs/vcf/GenotypeGVCFs_{chrom}.log"
+    threads: 4
+    resources:
+        mem_mb=32768
     shell:
         """
         gatk GenotypeGVCFs \
-        -R {config['ref']} \
-        -V {input} \
-        -O {output} \
+        -R {input.reference_genome} \
+        -V {input.cohort_gvcf} \
+        -O {output[0]} \
         &> {log}
         """
 
-rule Select_snp:
+rule SelectSNPsPerChromosome:
     input:
-        "vcf/raw.vcf.gz"
+        raw_vcf="vcf/raw_{chrom}.vcf.gz"
     output:
-        "vcf/snp/raw.snp.vcf.gz"
+        temp("vcf/snp/raw_{chrom}.snp.vcf.gz"),
+        temp("vcf/snp/raw_{chrom}.snp.vcf.gz.tbi")
     log:
-        "logs/gatk/vcf/snp.vcf.log"
+        "logs/vcf/snp_{chrom}.log"
+    threads: 4
     shell:
         """
         gatk SelectVariants \
-        -V {input} \
-        -O {output} \
+        -V {input.raw_vcf} \
+        -O {output[0]} \
         --select-type-to-include SNP \
         &> {log}
         """
 
-rule Mark_snp:
+rule MarkFilteredSNPsPerChromosome:
     input:
-        "vcf/snp/raw.snp.vcf.gz"
+        reference_genome=config["ref"],
+        snp_vcf="vcf/snp/raw_{chrom}.snp.vcf.gz"
     output:
-        "vcf/snp/filter.snp.vcf.gz"
+        temp("vcf/snp/mark_{chrom}.snp.vcf.gz"),
+        temp("vcf/snp/mark_{chrom}.snp.vcf.gz.tbi")
     log:
-        "logs/gatk/vcf/snp.filter.vcf.log"
+        "logs/vcf/snp_mark_{chrom}.log"
+    params:
+        QD_snp=config["QD_snp"],
+        MQ_snp=config["MQ_snp"],
+        FS_snp=config["FS_snp"],
+        SOR_snp=config["SOR_snp"],
+        MQRS_snp=config["MQRS_snp"],
+        RPRS_snp=config["RPRS_snp"],
+        QUAL_snp=config["QUAL_snp"]
     shell:
         """
         gatk VariantFiltration \
-        -R {config['ref']} \
-        -V {input} \
-        --filter-expression "QD < {config['QD_snp']}" \
+        -R {input.reference_genome} \
+        -V {input.snp_vcf} \
+        --filter-expression 'QD < {params.QD_snp}' \
         --filter-name 'SNP_QD_filter' \
-        --filter-expression "MQ < {config['MQ_snp']}" \
+        --filter-expression 'MQ < {params.MQ_snp}' \
         --filter-name 'SNP_MQ_filter' \
-        --filter-expression "FS > {config['FS_snp']}" \
+        --filter-expression 'FS > {params.FS_snp}' \
         --filter-name 'SNP_FS_filter' \
-        --filter-expression "SOR > {config['SOR_snp']}" \
+        --filter-expression 'SOR > {params.SOR_snp}' \
         --filter-name 'SNP_SOR_filter' \
-        --filter-expression "MQRankSum < {config['MQRS_snp']}" \
+        --filter-expression 'MQRankSum < {params.MQRS_snp}' \
         --filter-name 'SNP_MQRS_filter' \
-        --filter-expression "ReadPosRankSum < {config['RPRS_snp']}" \
+        --filter-expression 'ReadPosRankSum < {params.RPRS_snp}' \
         --filter-name 'SNP_RPRS_filter' \
-        --filter-expression "QUAL < {config['QUAL_snp']}" \
+        --filter-expression 'QUAL < {params.QUAL_snp}' \
         --filter-name 'SNP_QUAL_filter' \
-        -O {output} \
+        -O {output[0]} \
         &> {log}
         """
 
-rule Filter_snp:
+rule FilterSNPsPerChromosome:
     input:
-        "vcf/snp/filter.snp.vcf.gz"
+        reference_genome=config["ref"],
+        mark_snp_vcf="vcf/snp/mark_{chrom}.snp.vcf.gz"
     output:
-        "vcf/snp/filtered.snp.vcf.gz"
+        temp("vcf/snp/filter_{chrom}.snp.vcf.gz"),
+        temp("vcf/snp/filter_{chrom}.snp.vcf.gz.tbi")
     log:
-        "logs/gatk/vcf/snp.filtered.vcf.log"
+        "logs/vcf/snp_filter_{chrom}.log"
     shell:
         """
         gatk SelectVariants \
-        -R {config['ref']} \
-        -V {input} \
+        -R {input.reference_genome} \
+        -V {input.mark_snp_vcf} \
         --exclude-filtered \
-        -O {output} \
+        -O {output[0]} \
+        &> {log}
+        """
+		
+rule ExtractSNPList:
+    input:
+        expand("vcf/snp/filter_{chrom}.snp.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/snp/snp_vcf.list")
+    params:
+        vcf_dir="vcf/snp/"
+    shell:
+        """
+        find {params.vcf_dir} -name 'filter_*.snp.vcf.gz' > {output}
+        """
+		
+rule MergeSNPs:
+    input:
+        "vcf/snp/snp_vcf.list"
+    output:
+        "vcf/snp/filter.snp.vcf.gz",
+        "vcf/snp/filter.snp.vcf.gz.tbi"
+    log:
+        "logs/vcf/merge_filter_snp.log"
+    shell:
+        """
+        gatk MergeVcfs \
+        -I {input} \
+        -O {output[0]} \
+        &> {log}
+        """
+		
+rule SelectIndelsPerChromosome:
+    input:
+        raw_vcf=temp("vcf/raw_{chrom}.vcf.gz")
+    output:
+        temp("vcf/indel/raw_{chrom}.indel.vcf.gz"),
+        temp("vcf/indel/raw_{chrom}.indel.vcf.gz.tbi")
+    log:
+        "logs/vcf/indel_{chrom}.log"
+    threads: 4
+    shell:
+        """
+        gatk SelectVariants \
+        -V {input.raw_vcf} \
+        -O {output[0]} \
+        --select-type-to-include INDEL \
+        &> {log}
+        """
+		
+rule MarkFilteredIndelsPerChromosome:
+    input:
+        reference_genome=config["ref"],
+        indel_vcf="vcf/indel/raw_{chrom}.indel.vcf.gz"
+    output:
+        temp("vcf/indel/mark_{chrom}.indel.vcf.gz"),
+        temp("vcf/indel/mark_{chrom}.indel.vcf.gz.tbi")
+    log:
+        "logs/vcf/indel_mark_{chrom}.log"
+    params:
+        QD_indel=config["QD_indel"],
+        FS_indel=config["FS_indel"],
+        SOR_indel=config["SOR_indel"],
+        RPRS_indel=config["RPRS_indel"],
+        QUAL_indel=config["QUAL_indel"]
+    shell:
+        """
+        gatk VariantFiltration \
+        -R {input.reference_genome} \
+        -V {input.indel_vcf} \
+        --filter-expression 'QD < {params.QD_indel}' \
+        --filter-name 'INDEL_QD_filter' \
+        --filter-expression 'FS > {params.FS_indel}' \
+        --filter-name 'INDEL_FS_filter' \
+        --filter-expression 'SOR > {params.SOR_indel}' \
+        --filter-name 'INDEL_SOR_filter' \
+        --filter-expression 'ReadPosRankSum < {params.RPRS_indel}' \
+        --filter-name 'INDEL_RPRS_filter' \
+        --filter-expression 'QUAL < {params.QUAL_indel}' \
+        --filter-name 'INDEL_QUAL_filter' \
+        -O {output[0]} \
+        &> {log}
+        """
+
+rule FilterIndelsPerChromosome:
+    input:
+        reference_genome=config["ref"],
+        mark_indel_vcf="vcf/indel/mark_{chrom}.indel.vcf.gz"
+    output:
+        temp("vcf/indel/filter_{chrom}.indel.vcf.gz"),
+        temp("vcf/indel/filter_{chrom}.indel.vcf.gz.tbi")
+    log:
+        "logs/vcf/indel_clean_{chrom}.log"
+    shell:
+        """
+        gatk SelectVariants \
+        -R {input.reference_genome} \
+        -V {input.mark_indel_vcf} \
+        --exclude-filtered \
+        -O {output[0]} \
+        &> {log}
+        """
+		
+rule ExtractINDELList:
+    input:
+        expand("vcf/indel/filter_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/indel/indel_vcf.list")
+    params:
+        vcf_dir="vcf/indel/"
+    shell:
+        """
+        find {params.vcf_dir} -name 'filter_*.indel.vcf.gz' > {output}
+        """
+		
+rule MergeINDELs:
+    input:
+        "vcf/indel/indel_vcf.list"
+    output:
+        "vcf/indel/filter.indel.vcf.gz",
+        "vcf/indel/filter.indel.vcf.gz.tbi"
+    log:
+        "logs/vcf/merge_filter_indel.log"
+    shell:
+        """
+        gatk MergeVcfs \
+        -I {input} \
+        -O {output[0]} \
+        &> {log}
+        """
+		
+rule MergeSNPandINDEL:
+    input:
+        snp_vcf="vcf/snp/filter.snp.vcf.gz",
+        indel_vcf="vcf/indel/filter.indel.vcf.gz"
+    output:
+        "vcf/filter.vcf.gz",
+        "vcf/filter.vcf.gz.tbi"
+    log:
+        "logs/vcf/filter.vcf.log"
+    shell:
+        """
+        gatk MergeVcfs  \
+        -I {input.snp_vcf} \
+        -I {input.indel_vcf} \
+        -O {output[0]} \
         &> {log}
         """
 
 rule SNPMissingRateAndMAFFilter:
     input:
-        "vcf/snp/filtered.snp.vcf.gz"
+        filtered_snp_vcf="vcf/snp/filter.snp.vcf.gz"
     output:
         "vcf/snp/clean.maf.snp"
     log:
-        "logs/gatk/vcf/clean.maf.snp.vcf.log"
+        "logs/vcf/clean.maf.snp.vcf.log"
+    params:
+        missingrate=config["missingrate"],
+        maf=config["maf"]
     shell:
         """
         vcftools \
-        --gzvcf {input} \
-        --max-missing {config['missingrate']} \
-        --maf {config['maf']} \
+        --gzvcf {input.filtered_snp_vcf} \
+        --max-missing {params.missingrate} \
+        --maf {params.maf} \
         --out {output} \
         --recode \
         &> {log}
         """
-
-rule Select_indel:
-    input:
-        "vcf/raw.vcf.gz"
-    output:
-        "vcf/indel/raw.indel.vcf.gz"
-    log:
-        "logs/gatk/vcf/indel.vcf.log"
-    shell:
-        """
-        gatk SelectVariants \
-        -V {input} \
-        -O {output} \
-        --select-type-to-include INDEL \
-        &> {log}
-        """
-
-rule Mark_indel:
-    input:
-        "vcf/indel/raw.indel.vcf.gz"
-    output:
-        "vcf/indel/filter.indel.vcf.gz"
-    log:
-        "logs/gatk/vcf/indel.filter.vcf.log"
-    shell:
-        """
-        gatk VariantFiltration \
-        -R {config['ref']} \
-        -V {input} \
-        --filter-expression "QD < {config['QD_indel']}" \
-        --filter-name 'INDEL_QD_filter' \
-        --filter-expression "FS > {config['FS_indel']}" \
-        --filter-name 'INDEL_FS_filter' \
-        --filter-expression "SOR > {config['SOR_indel']}" \
-        --filter-name 'INDEL_SOR_filter' \
-        --filter-expression "ReadPosRankSum < {config['RPRS_indel']}" \
-        --filter-name 'INDEL_RPRS_filter' \
-        --filter-expression "QUAL < {config['QUAL_indel']}" \
-        --filter-name 'INDEL_QUAL_filter' \
-        -O {output} \
-        &> {log}
-        """
-
-rule Filter_indel:
-    input:
-        "vcf/indel/filter.indel.vcf.gz"
-    output:
-        "vcf/indel/filtered.indel.vcf.gz"
-    log:
-        "logs/gatk/vcf/indel.filtered.vcf.log"
-    shell:
-        """
-        gatk SelectVariants \
-        -R {config['ref']} \
-        -V {input} \
-        --exclude-filtered \
-        -O {output} \
-        &> {log}
-        """
-
-rule MergeSNPandINDEL:
-    input:
-        "vcf/snp/filtered.snp.vcf.gz",
-        "vcf/indel/filtered.indel.vcf.gz"
-    output:
-        "vcf/filtered.vcf.gz"
-    log:
-        "logs/gatk/vcf/filtered.vcf.log"
-    shell:
-        """
-        gatk MergeVcfs  \
-        -I {input[0]} \
-        -I {input[1]} \
-        -O {output} \
-        &> {log}
-        """
-
+		
 rule VCFMissingRateFilter:
     input:
-        "vcf/filtered.vcf.gz"
+        filtered_vcf="vcf/filter.vcf.gz"
     output:
-        "vcf/clean.missingrate"
+        "vcf/clean"
     log:
-        "logs/gatk/vcf/clean.vcf.log"
+        "logs/vcf/clean.vcf.log"
+    params:
+        missingrate=config["missingrate"]
     shell:
         """
         vcftools \
-        --gzvcf {input} \
-        --max-missing {config['missingrate']} \
-        --out {output} \
-        --recode \
-        &> {log}
-        """
-
-rule VCFMinorAlleleFrequencyFilter:
-    input:
-        "vcf/clean.missingrate.recode.vcf"
-    output:
-        "vcf/clean.missingrate.maf"
-    log:
-        "logs/gatk/vcf/clean.vcf.log"
-    shell:
-        """
-        vcftools \
-        --vcf {input} \
-        --max-missing {config['missingrate']} \
+        --gzvcf {input.filtered_vcf} \
+        --max-missing {params.missingrate} \
         --out {output} \
         --recode \
         &> {log}
