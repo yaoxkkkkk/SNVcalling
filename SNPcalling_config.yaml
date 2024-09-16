@@ -1,10 +1,10 @@
 # config.yaml
 
 # Absolute path to the genome fasta file
-ref: " " 
+ref: "" 
 
 # Fastq file suffix
-fastq_suffix: " " # Defualt is ".fq.gz"
+fastq_suffix: "" # Defualt is ".fq.gz"
 
 # fastp parameters
 qualified_quality_phred: 20
