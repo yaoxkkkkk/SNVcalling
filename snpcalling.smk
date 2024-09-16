@@ -17,10 +17,10 @@ rule all:
         "vcf/raw.vcf.gz",
         "vcf/gvcf/vcf.list",
         "vcf/snp/filter.snp.vcf.gz",
-        "vcf/snp/clean.maf.snp",
+        "vcf/snp/clean.maf.snp.vcf.gz",
         "vcf/indel/filter.indel.vcf.gz",
         "vcf/filter.vcf.gz",
-        "vcf/clean"
+        "vcf/clean.vcf.gz"
 
 rule QualityControlfastp:
     input:
@@ -393,7 +393,7 @@ rule SNPMissingRateAndMAFFilter:
     input:
         filtered_snp_vcf="vcf/snp/filter.snp.vcf.gz"
     output:
-        "vcf/snp/clean.maf.snp"
+        "vcf/snp/clean.maf.snp.vcf.gz"
     log:
         "logs/vcf/clean.maf.snp.vcf.log"
     params:
@@ -405,8 +405,9 @@ rule SNPMissingRateAndMAFFilter:
         --gzvcf {input.filtered_snp_vcf} \
         --max-missing {params.missingrate} \
         --maf {params.maf} \
-        --out {output} \
         --recode \
+        --stdout \
+        | gzip > {output} \
         &> {log}
         """
 		
@@ -414,7 +415,7 @@ rule VCFMissingRateFilter:
     input:
         filtered_vcf="vcf/filter.vcf.gz"
     output:
-        "vcf/clean"
+        "vcf/clean.vcf.gz"
     log:
         "logs/vcf/clean.vcf.log"
     params:
@@ -424,7 +425,8 @@ rule VCFMissingRateFilter:
         vcftools \
         --gzvcf {input.filtered_vcf} \
         --max-missing {params.missingrate} \
-        --out {output} \
         --recode \
+        --stdout \
+        | gzip > {output} \
         &> {log}
         """
