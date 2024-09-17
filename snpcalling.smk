@@ -399,6 +399,7 @@ rule SNPMissingRateAndMAFFilter:
     params:
         missingrate=config["missingrate"],
         maf=config["maf"]
+    threads: 4
     shell:
         """
         vcftools \
@@ -407,7 +408,7 @@ rule SNPMissingRateAndMAFFilter:
         --maf {params.maf} \
         --recode \
         --stdout \
-        | pigz > {output} \
+        | pigz -p {threads} > {output} \
         &> {log}
         """
 		
@@ -420,6 +421,7 @@ rule VCFMissingRateFilter:
         "logs/vcf/clean.vcf.log"
     params:
         missingrate=config["missingrate"]
+    threads: 4
     shell:
         """
         vcftools \
@@ -427,6 +429,6 @@ rule VCFMissingRateFilter:
         --max-missing {params.missingrate} \
         --recode \
         --stdout \
-        | pigz > {output} \
+        | pigz -p {threads} > {output} \
         &> {log}
         """
