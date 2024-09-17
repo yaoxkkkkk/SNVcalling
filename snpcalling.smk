@@ -399,7 +399,7 @@ rule SNPMissingRateAndMAFFilter:
     params:
         missingrate=config["missingrate"],
         maf=config["maf"]
-    threads: 4
+    threads: 16
     shell:
         """
         vcftools \
@@ -421,7 +421,7 @@ rule VCFMissingRateFilter:
         "logs/vcf/clean.vcf.log"
     params:
         missingrate=config["missingrate"]
-    threads: 4
+    threads: 16
     shell:
         """
         vcftools \
