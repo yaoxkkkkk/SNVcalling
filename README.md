@@ -7,6 +7,7 @@
 - GATK
 - samtools
 - VCFtools
+- bgzip
 
 ## What the pipeline does
 
