@@ -408,7 +408,7 @@ rule SNPMissingRateAndMAFFilter:
         --maf {params.maf} \
         --recode \
         --stdout \
-        | pigz -p {threads} > {output} \
+        | bgzip -@ {threads} > {output} \
         &> {log}
         """
 		
@@ -429,6 +429,6 @@ rule VCFMissingRateFilter:
         --max-missing {params.missingrate} \
         --recode \
         --stdout \
-        | pigz -p {threads} > {output} \
+        | bgzip -@ {threads} > {output} \
         &> {log}
         """
