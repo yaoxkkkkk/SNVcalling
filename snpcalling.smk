@@ -399,7 +399,7 @@ rule SNPMissingRateAndMAFFilter:
     params:
         missingrate=config["missingrate"],
         maf=config["maf"]
-    threads: 16
+    threads: 8
     shell:
         """
         vcftools \
@@ -408,7 +408,7 @@ rule SNPMissingRateAndMAFFilter:
         --maf {params.maf} \
         --recode \
         --stdout \
-        | bgzip -@ {threads} > {output} \
+        | bgzip > {output} \
         &> {log}
         """
 		
@@ -421,14 +421,15 @@ rule VCFMissingRateFilter:
         "logs/vcf/clean.vcf.log"
     params:
         missingrate=config["missingrate"]
-    threads: 16
+    threads: 8
     shell:
         """
         vcftools \
         --gzvcf {input.filtered_vcf} \
         --max-missing {params.missingrate} \
+        --maf 0.0005 \
         --recode \
         --stdout \
-        | bgzip -@ {threads} > {output} \
+        | bgzip > {output} \
         &> {log}
         """
