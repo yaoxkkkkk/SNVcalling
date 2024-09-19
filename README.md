@@ -24,7 +24,7 @@
 
 ## What to output
 
-- Basic set of SNP and INDEL (filtered with missingrate < 0.9)
+- Basic set of SNP and INDEL (filtered with missingrate < 0.9 and MAF > 0.0005)
 - Core set of SNP (filtered with missingrate < 0.9 and MAF > 0.05, could be used for [population structure analysis](https://github.com/yaoxkkkkk/Population-structure-analysis-pipeline))
 
 ## Usage
@@ -32,8 +32,6 @@
 ### 1. Prepare your working directory
 
 ```shell
-├── script
-│   └── snake_pipeline
 ├── raw_data
 ├── genome_index
 └── logs
