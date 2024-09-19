@@ -1,5 +1,7 @@
 # Population joint SNP calling snakemake pipeline
 
+> This pipeline is inspired by F.J. Yang (Bioinplant Lab, Zhejiang University).
+
 ## Dependent Software
 
 - fastp
