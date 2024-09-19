@@ -37,7 +37,7 @@
 └── logs
 ```
 
-Please storage your resequence data in `raw_data/` folder and genome file in `genome_index/` folder. Script files, pipeline files and configuration files can be stored in the way you are used to.
+Please storage your resequence data in `raw_data/` folder and genome file in `genome_index/` folder. Script files, pipeline files and configuration files can be stored the way you like.
 
 ### 2. Prepare the config file
 
