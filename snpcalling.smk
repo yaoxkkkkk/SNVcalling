@@ -1,4 +1,5 @@
 import os
+import gzip
 
 configfile: "SNPcalling_config.yaml"
 
@@ -12,15 +13,9 @@ trim_front = config.get("trim_front", 10)
 
 rule all:
     input:
-        expand("mapping/{sample}.sorted.markdup.bam", sample=config["sample"]),
-        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
-        "vcf/raw.vcf.gz",
-        "vcf/gvcf/vcf.list",
-        "vcf/snp/filter.snp.vcf.gz",
+        "vcf/clean.vcf.gz",
         "vcf/snp/clean.maf.snp.vcf.gz",
-        "vcf/indel/filter.indel.vcf.gz",
-        "vcf/filter.vcf.gz",
-        "vcf/clean.vcf.gz"
+        "mapping/merged_depth_stats.txt"
 
 rule QualityControlfastp:
     input:
@@ -89,6 +84,38 @@ rule RemoveDuplicates:
         --CREATE_INDEX true \
         &> {log}
         """
+
+rule BAMDepthStat:
+    input:
+        bam="mapping/{sample}.sorted.markdup.bam"
+    output:
+        temp("mapping/{sample}.chr.stat.gz")
+    log:
+        "logs/depth/{sample}_pandepth.log"
+    threads:2
+    shell:
+        """
+        pandepth \
+        -i {input.bam} \
+        -o mapping/{wildcards.sample} \
+        -t {threads} \
+        &> {log}
+        """
+
+rule MergeDepthStats:
+    input:
+        expand("mapping/{sample}.chr.stat.gz", sample=config["sample"])
+    output:
+        "mapping/merged_depth_stats.txt"
+    log:
+        "logs/depth/merge_depth_stats.log"
+    run:
+        with open(output[0], 'w') as out_file:
+            for stat_file in input:
+                sample = stat_file.split("/")[-1].split(".")[0]
+                with gzip.open(stat_file, 'rt') as f: 
+                    last_line = f.readlines()[-1].strip()
+                    out_file.write(f"{sample}\t{last_line}\n") 
 
 rule HaplotypeCaller:
     input:
