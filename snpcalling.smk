@@ -92,7 +92,7 @@ rule BAMDepthStat:
         temp("mapping/{sample}.chr.stat.gz")
     log:
         "logs/depth/{sample}_pandepth.log"
-    threads:2
+    threads: 2
     shell:
         """
         pandepth \
