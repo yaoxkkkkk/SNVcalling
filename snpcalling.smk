@@ -17,6 +17,51 @@ rule all:
         "vcf/snp/clean.maf.snp.vcf.gz",
         "mapping/merged_depth_stats.txt"
 
+rule bwa_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.amb",
+        "genome_index/{ref_basename}.ann",
+        "genome_index/{ref_basename}.bwt",
+        "genome_index/{ref_basename}.pac",
+        "genome_index/{ref_basename}.sa"
+    log:
+        "logs/index/bwa_index_{ref_basename}.log"
+    shell:
+        """
+        bwa index \
+        -p genome_index/{wildcards.ref_basename} \
+        {input.reference_genome} \
+        &> {log}
+        """
+rule samtools_fai_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.fai"
+    log:
+        "logs/index/samtools_index_{ref_basename}.log"
+    shell:
+        """
+        samtools faidx {input.reference_genome} &> {log}
+        cp {input.reference_genome}.fai {output}
+        """
+rule gatk_dict_index:
+    input:
+        reference_genome=config["ref"]
+    output:
+        "genome_index/{ref_basename}.dict"
+    log:
+        "logs/index/gatk_index_{ref_basename}.log"
+    shell:
+        """
+        gatk CreateSequenceDictionary \
+        -R {input.reference_genome} \
+        -O {output} \
+        &> {log}
+        """
+
 rule QualityControlfastp:
     input:
         f"raw_data/{{sample}}_1{fastq_suffix}",
@@ -47,7 +92,8 @@ rule QualityControlfastp:
 rule BWA_map:
     input:
         r1="clean_data/{sample}_1_clean.fq.gz",
-        r2="clean_data/{sample}_2_clean.fq.gz"
+        r2="clean_data/{sample}_2_clean.fq.gz",
+        bwa_index=expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
     output:
         temp("mapping/{sample}.sorted.bam")
     threads: 8
@@ -120,7 +166,9 @@ rule MergeDepthStats:
 rule HaplotypeCaller:
     input:
         reference_genome=config["ref"],
-        bam="mapping/{sample}.sorted.markdup.bam"
+        bam="mapping/{sample}.sorted.markdup.bam",
+        samtools_index="genome_index/{ref_basename}.fai",
+        gatk_dict_index="genome_index/{ref_basename}.dict"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz",
         "vcf/gvcf/{sample}.g.vcf.gz.tbi"
