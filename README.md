@@ -10,6 +10,7 @@
 - samtools
 - VCFtools
 - bgzip
+- PanDepth
 
 ## What the pipeline does
 
@@ -18,6 +19,7 @@
 - Resequencing reads map to reference genome
 - GATK SNP and INDEL calling pipeline
 - SNP quality control (Missing rate, MAF etc.)
+- bam depth and coverage statistics
 
 ## What to input
 
