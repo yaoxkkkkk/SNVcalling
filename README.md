@@ -112,6 +112,7 @@ For example:
 snakemake \
 	--snakefile ${working_dir}/00-script/snake_pipeline/${snakemake_file} \
 	-d ${working_dir} \
+	-configfile ${configfile_path} \
 	--cores ${cores_num} \
 	--rerun-incomplete \
 	--latency-wait 360 \
