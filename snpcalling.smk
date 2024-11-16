@@ -62,37 +62,37 @@ rule gatk_dict_index:
         &> {log}
         """
 
-rule QualityControlfastp:
-    input:
-        f"raw_data/{{sample}}_1{fastq_suffix}",
-        f"raw_data/{{sample}}_2{fastq_suffix}"
-    output:
-        "clean_data/{sample}_1_clean.fq.gz",
-        "clean_data/{sample}_2_clean.fq.gz",
-        "logs/fastp/fastp_report/{sample}.fastp.html"
-    threads: 2
-    log:
-        "logs/fastp/{sample}.log"
-    shell:
-        """
-        fastp \
-        --thread {threads} \
-        -i {input[0]} \
-        -I {input[1]} \
-        -o {output[0]} \
-        -O {output[1]} \
-        -h {output[2]} \
-        -j /dev/null \
-        -q {qualified_quality_phred} \
-        -u {unqualified_percent_limit} \
-        -f {trim_front} \
-        &> {log}
-        """
+# rule QualityControlfastp:
+    # input:
+        # f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
+        # f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}"
+    # output:
+        # "clean_data/{sample}_1_clean.fq.gz",
+        # "clean_data/{sample}_2_clean.fq.gz",
+        # "logs/fastp/fastp_report/{sample}.fastp.html"
+    # threads: 2
+    # log:
+        # "logs/fastp/{sample}.log"
+    # shell:
+        # """
+        # fastp \
+        # --thread {threads} \
+        # -i {input[0]} \
+        # -I {input[1]} \
+        # -o {output[0]} \
+        # -O {output[1]} \
+        # -h {output[2]} \
+        # -j /dev/null \
+        # -q {qualified_quality_phred} \
+        # -u {unqualified_percent_limit} \
+        # -f {trim_front} \
+        # &> {log}
+        # """
 
 rule BWA_map:
     input:
-        r1="clean_data/{sample}_1_clean.fq.gz",
-        r2="clean_data/{sample}_2_clean.fq.gz",
+        r1=f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
+        r2=f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}",
         bwa_index=expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
     output:
         temp("mapping/{sample}.sorted.bam")
@@ -119,7 +119,7 @@ rule RemoveDuplicates:
         "mapping/{sample}.sorted.markdup.bam",
         "mapping/markdup_metrics/{sample}.sorted.markdup_metrics.txt"
     log:
-        "logs/RemoveDuplicates_{sample}.log"
+        "logs/bwa/RemoveDuplicates_{sample}.log"
     shell:
         """
         gatk MarkDuplicates \
@@ -167,8 +167,8 @@ rule HaplotypeCaller:
     input:
         reference_genome=config["ref"],
         bam="mapping/{sample}.sorted.markdup.bam",
-        samtools_index="genome_index/{ref_basename}.fai",
-        gatk_dict_index="genome_index/{ref_basename}.dict"
+        samtools_index=f"genome_index/{ref_basename}.fai",
+        gatk_dict_index=f"genome_index/{ref_basename}.dict"
     output:
         "vcf/gvcf/{sample}.g.vcf.gz",
         "vcf/gvcf/{sample}.g.vcf.gz.tbi"
@@ -224,7 +224,8 @@ rule ConsolidateGVCFsPerChromosome:
 rule GenotypeGVCFsPerChromosome:
     input:
         reference_genome=config["ref"],
-        cohort_gvcf="vcf/cohort_{chrom}.g.vcf.gz"
+        cohort_gvcf="vcf/cohort_{chrom}.g.vcf.gz",
+        cohort_gvcf_index="vcf/cohort_{chrom}.g.vcf.gz.tbi"
     output:
         temp("vcf/raw_{chrom}.vcf.gz"),
         temp("vcf/raw_{chrom}.vcf.gz.tbi")
@@ -244,7 +245,8 @@ rule GenotypeGVCFsPerChromosome:
 
 rule SelectSNPsPerChromosome:
     input:
-        raw_vcf="vcf/raw_{chrom}.vcf.gz"
+        raw_vcf="vcf/raw_{chrom}.vcf.gz",
+        raw_vcf_index="vcf/raw_{chrom}.vcf.gz.tbi"
     output:
         temp("vcf/snp/raw_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/raw_{chrom}.snp.vcf.gz.tbi")
@@ -263,7 +265,8 @@ rule SelectSNPsPerChromosome:
 rule MarkFilteredSNPsPerChromosome:
     input:
         reference_genome=config["ref"],
-        snp_vcf="vcf/snp/raw_{chrom}.snp.vcf.gz"
+        snp_vcf="vcf/snp/raw_{chrom}.snp.vcf.gz",
+        snp_vcf_index="vcf/snp/raw_{chrom}.snp.vcf.gz.tbi"
     output:
         temp("vcf/snp/mark_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/mark_{chrom}.snp.vcf.gz.tbi")
@@ -303,7 +306,8 @@ rule MarkFilteredSNPsPerChromosome:
 rule FilterSNPsPerChromosome:
     input:
         reference_genome=config["ref"],
-        mark_snp_vcf="vcf/snp/mark_{chrom}.snp.vcf.gz"
+        mark_snp_vcf="vcf/snp/mark_{chrom}.snp.vcf.gz",
+        mark_snp_vcf_index="vcf/snp/mark_{chrom}.snp.vcf.gz.tbi"
     output:
         temp("vcf/snp/filter_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/filter_{chrom}.snp.vcf.gz.tbi")
@@ -318,7 +322,7 @@ rule FilterSNPsPerChromosome:
         -O {output[0]} \
         &> {log}
         """
-		
+        
 rule ExtractSNPList:
     input:
         expand("vcf/snp/filter_{chrom}.snp.vcf.gz", chrom=config["chromosomes"])
@@ -330,10 +334,11 @@ rule ExtractSNPList:
         """
         find {params.vcf_dir} -name 'filter_*.snp.vcf.gz' > {output}
         """
-		
+        
 rule MergeSNPs:
     input:
-        "vcf/snp/snp_vcf.list"
+        "vcf/snp/snp_vcf.list",
+        expand("vcf/snp/filter_{chrom}.snp.vcf.gz", chrom=config["chromosomes"])
     output:
         "vcf/snp/filter.snp.vcf.gz",
         "vcf/snp/filter.snp.vcf.gz.tbi"
@@ -342,14 +347,15 @@ rule MergeSNPs:
     shell:
         """
         gatk MergeVcfs \
-        -I {input} \
+        -I {input[0]} \
         -O {output[0]} \
         &> {log}
         """
-		
+        
 rule SelectIndelsPerChromosome:
     input:
-        raw_vcf=temp("vcf/raw_{chrom}.vcf.gz")
+        raw_vcf="vcf/raw_{chrom}.vcf.gz",
+        raw_vcf_index="vcf/raw_{chrom}.vcf.gz.tbi"
     output:
         temp("vcf/indel/raw_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/raw_{chrom}.indel.vcf.gz.tbi")
@@ -364,11 +370,12 @@ rule SelectIndelsPerChromosome:
         --select-type-to-include INDEL \
         &> {log}
         """
-		
+        
 rule MarkFilteredIndelsPerChromosome:
     input:
         reference_genome=config["ref"],
-        indel_vcf="vcf/indel/raw_{chrom}.indel.vcf.gz"
+        indel_vcf="vcf/indel/raw_{chrom}.indel.vcf.gz",
+        indel_vcf_index="vcf/indel/raw_{chrom}.indel.vcf.gz.tbi"
     output:
         temp("vcf/indel/mark_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/mark_{chrom}.indel.vcf.gz.tbi")
@@ -402,7 +409,8 @@ rule MarkFilteredIndelsPerChromosome:
 rule FilterIndelsPerChromosome:
     input:
         reference_genome=config["ref"],
-        mark_indel_vcf="vcf/indel/mark_{chrom}.indel.vcf.gz"
+        mark_indel_vcf="vcf/indel/mark_{chrom}.indel.vcf.gz",
+        mark_indel_vcf_index="vcf/indel/mark_{chrom}.indel.vcf.gz.tbi"
     output:
         temp("vcf/indel/filter_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/filter_{chrom}.indel.vcf.gz.tbi")
@@ -417,7 +425,7 @@ rule FilterIndelsPerChromosome:
         -O {output[0]} \
         &> {log}
         """
-		
+        
 rule ExtractINDELList:
     input:
         expand("vcf/indel/filter_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
@@ -429,10 +437,11 @@ rule ExtractINDELList:
         """
         find {params.vcf_dir} -name 'filter_*.indel.vcf.gz' > {output}
         """
-		
+        
 rule MergeINDELs:
     input:
-        "vcf/indel/indel_vcf.list"
+        "vcf/indel/indel_vcf.list",
+        expand("vcf/indel/filter_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
     output:
         "vcf/indel/filter.indel.vcf.gz",
         "vcf/indel/filter.indel.vcf.gz.tbi"
@@ -441,11 +450,11 @@ rule MergeINDELs:
     shell:
         """
         gatk MergeVcfs \
-        -I {input} \
+        -I {input[0]} \
         -O {output[0]} \
         &> {log}
         """
-		
+        
 rule MergeSNPandINDEL:
     input:
         snp_vcf="vcf/snp/filter.snp.vcf.gz",
@@ -484,9 +493,9 @@ rule SNPMissingRateAndMAFFilter:
         --recode \
         --stdout \
         | bgzip > {output} \
-        &> {log}
+        2> {log}
         """
-		
+        
 rule VCFMissingRateFilter:
     input:
         filtered_vcf="vcf/filter.vcf.gz"
@@ -506,5 +515,5 @@ rule VCFMissingRateFilter:
         --recode \
         --stdout \
         | bgzip > {output} \
-        &> {log}
+        2> {log}
         """
