@@ -106,13 +106,14 @@ sed 's/^/    - /' sample.list >> ${working_dir}/SNPcalling_config.yaml
 
 ### 3. Submit the pipeline to HPC cluster
 
+Put snakefile and configuration file in the same directory, then running it.
+
 For example:
 
 ```shell
 snakemake \
 	--snakefile ${working_dir}/00-script/snake_pipeline/${snakemake_file} \
 	-d ${working_dir} \
-	--configfile ${configfile_path} \
 	--cores ${cores_num} \
 	--rerun-incomplete \
 	--latency-wait 360 \
