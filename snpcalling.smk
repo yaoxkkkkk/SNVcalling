@@ -62,37 +62,37 @@ rule gatk_dict_index:
         &> {log}
         """
 
-# rule QualityControlfastp:
-    # input:
-        # f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
-        # f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}"
-    # output:
-        # "clean_data/{sample}_1_clean.fq.gz",
-        # "clean_data/{sample}_2_clean.fq.gz",
-        # "logs/fastp/fastp_report/{sample}.fastp.html"
-    # threads: 2
-    # log:
-        # "logs/fastp/{sample}.log"
-    # shell:
-        # """
-        # fastp \
-        # --thread {threads} \
-        # -i {input[0]} \
-        # -I {input[1]} \
-        # -o {output[0]} \
-        # -O {output[1]} \
-        # -h {output[2]} \
-        # -j /dev/null \
-        # -q {qualified_quality_phred} \
-        # -u {unqualified_percent_limit} \
-        # -f {trim_front} \
-        # &> {log}
-        # """
+rule QualityControlfastp:
+    input:
+        f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
+        f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}"
+    output:
+        "clean_data/{sample}_1_clean.fq.gz",
+        "clean_data/{sample}_2_clean.fq.gz",
+        "logs/fastp/fastp_report/{sample}.fastp.html"
+    threads: 2
+    log:
+        "logs/fastp/{sample}.log"
+    shell:
+        """
+        fastp \
+        --thread {threads} \
+        -i {input[0]} \
+        -I {input[1]} \
+        -o {output[0]} \
+        -O {output[1]} \
+        -h {output[2]} \
+        -j /dev/null \
+        -q {qualified_quality_phred} \
+        -u {unqualified_percent_limit} \
+        -f {trim_front} \
+        &> {log}
+        """
 
 rule BWA_map:
     input:
-        r1=f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
-        r2=f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}",
+        r1=f"raw_data/{{sample}}_clean_1{fastq_suffix}",
+        r2=f"raw_data/{{sample}}_clean_2{fastq_suffix}",
         bwa_index=expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
     output:
         temp("mapping/{sample}.sorted.bam")
