@@ -35,6 +35,7 @@ rule bwa_index:
         {input.reference_genome} \
         &> {log}
         """
+
 rule samtools_fai_index:
     input:
         reference_genome=config["ref"]
@@ -47,6 +48,7 @@ rule samtools_fai_index:
         samtools faidx {input.reference_genome} &> {log}
         cp {input.reference_genome}.fai {output}
         """
+
 rule gatk_dict_index:
     input:
         reference_genome=config["ref"]
@@ -64,8 +66,8 @@ rule gatk_dict_index:
 
 rule QualityControlfastp:
     input:
-        f"raw_data/{{sample}}/{{sample}}_clean_1{fastq_suffix}",
-        f"raw_data/{{sample}}/{{sample}}_clean_2{fastq_suffix}"
+        f"raw_data/{{sample}}_clean_1{fastq_suffix}",
+        f"raw_data/{{sample}}_clean_2{fastq_suffix}"
     output:
         "clean_data/{sample}_1_clean.fq.gz",
         "clean_data/{sample}_2_clean.fq.gz",
@@ -91,8 +93,8 @@ rule QualityControlfastp:
 
 rule BWA_map:
     input:
-        r1=f"raw_data/{{sample}}_clean_1{fastq_suffix}",
-        r2=f"raw_data/{{sample}}_clean_2{fastq_suffix}",
+        r1="clean_data/{sample}_1_clean.fq.gz",
+        r2="clean_data/{sample}_2_clean.fq.gz",
         bwa_index=expand("genome_index/{ref_basename}.{ext}", ref_basename=ref_basename, ext=["amb", "ann", "bwt", "pac", "sa"])
     output:
         temp("mapping/{sample}.sorted.bam")
