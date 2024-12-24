@@ -1,4 +1,4 @@
-# Population joint SNP calling snakemake pipeline
+# Population joint SNP calling pipeline (based on snakemake)
 
 > This pipeline is inspired by F.J. Yang (Bioinplant Lab, Zhejiang University).
 
