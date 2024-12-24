@@ -83,12 +83,12 @@ fastq_suffix: " " # Default value is ".fq.gz"
 ```shell
 # Sample list, samples' name should start with letters.
 sample:
-    - sample1
-    - sample2
-    - sample3
-    - sample4
+    - "sample1"
+    - "sample2"
+    - "sample3"
+    - "sample4"
     - ...
-    - samplen
+    - "samplen"
 ```
 
 You can use following command to add sample list to the config file if you have a sample list txt file (for example `sample.list`):
@@ -101,7 +101,7 @@ sample3
 sample4
 
 # Add samples to the config file:
-sed 's/^/    - /' sample.list >> ${working_dir}/SNPcalling_config.yaml
+awk '{print "    - \"" $0 "\""}' sample.list >> ${working_dir}/SNPcalling_config.yaml
 ```
 
 ### 3. Submit the pipeline to HPC cluster
