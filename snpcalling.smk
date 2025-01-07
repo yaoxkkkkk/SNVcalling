@@ -479,7 +479,7 @@ rule MergeSNPandINDEL:
 
 rule SNPfilter:
     input:
-        filtered_snp_vcf="vcf/snp/filter.snp.vcf.gz"
+        "vcf/snp/filter.snp.vcf.gz"
     output:
         "vcf/snp/snp.vcf.gz"
     log:
@@ -487,7 +487,7 @@ rule SNPfilter:
     shell:
         """
         vcftools \
-        --gzvcf {input.filtered_snp_vcf} \
+        --gzvcf {input} \
         --max-missing 1 \
         --maf 0.05 \
         --recode \
