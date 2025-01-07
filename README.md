@@ -6,7 +6,7 @@
 - [BWA](https://github.com/lh3/bwa)
 - [GATK](https://gatk.broadinstitute.org/hc/en-us)
 - [samtools](https://github.com/samtools/samtools)
-- [VCFtools](https://github.com/vcftools/vcftools)
+- [vcftools](https://github.com/vcftools/vcftools)
 - bgzip (part of [htslib](https://github.com/samtools/htslib))
 - [PanDepth](https://github.com/HuiyangYu/PanDepth)
 
