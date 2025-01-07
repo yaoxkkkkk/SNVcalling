@@ -4,22 +4,13 @@
 
 ## Dependent Software
 
-- fastp
-- BWA
-- GATK
-- samtools
-- VCFtools
-- bgzip
-- PanDepth
-
-## What the pipeline does
-
-- Genome file index creation (BWA/samtools/GATK)
-- Resequencing reads quality control
-- Resequencing reads map to reference genome
-- GATK SNP and INDEL calling pipeline
-- SNP quality control (Missing rate, MAF etc.)
-- bam depth and coverage statistics
+- [fastp](https://github.com/OpenGene/fastp)
+- [BWA](https://github.com/lh3/bwa)
+- [GATK](https://gatk.broadinstitute.org/hc/en-us)
+- [samtools](https://github.com/samtools/samtools)
+- [VCFtools](https://github.com/vcftools/vcftools)
+- bgzip (part of [htslib](https://github.com/samtools/htslib))
+- [PanDepth](https://github.com/HuiyangYu/PanDepth)
 
 ## What to input
 
@@ -28,8 +19,8 @@
 
 ## What to output
 
-- Basic set of SNP and INDEL (filtered with missingrate < 0.9 and MAF > 0.0005)
-- Core set of SNP (filtered with missingrate < 0.9 and MAF > 0.05, could be used for [population structure analysis](https://github.com/yaoxkkkkk/Population-structure-analysis-pipeline))
+- SNV Basic set (missingrate < 0.6 and MAF > 0.005) and core set (missingrate < 0.8 and MAF > 0.05)
+- SNP core set (no missing and MAF > 0.05, could be used for [population structure analysis](https://github.com/yaoxkkkkk/Population-structure-analysis-pipeline))
 
 ## Usage
 
@@ -114,8 +105,5 @@ For example:
 snakemake \
 	--snakefile ${working_dir}/00-script/snake_pipeline/${snakemake_file} \
 	-d ${working_dir} \
-	--cores ${cores_num} \
-	--rerun-incomplete \
-	--latency-wait 360 \
-	--keep-going
+	--cores ${cores_num}
 ```
