@@ -165,7 +165,7 @@ rule MergeDepthStats:
                 sample=stat_file.split("/")[-1].split(".")[0]
                 with gzip.open(stat_file, 'rt') as f: 
                     last_line=f.readlines()[-1].strip()
-                    out_file.write(f"{sample}\t{last_line}\n") 
+                    out_file.write(f"{sample}\t{last_line}\n")
 
 rule HaplotypeCaller:
     input:
