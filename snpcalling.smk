@@ -4,17 +4,15 @@ import gzip
 configfile: "SNPcalling_config.yaml"
 
 # 提取文件名的基部分（去除路径和扩展名）
-ref_basename = os.path.splitext(os.path.basename(config["ref"]))[0]
-fastq_suffix = config.get("fastq_suffix", ".fq.gz")
-
-qualified_quality_phred = config.get("qualified_quality_phred", 20)
-unqualified_percent_limit = config.get("unqualified_percent_limit", 40)
-trim_front = config.get("trim_front", 10)
+ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
+fastq_suffix=config.get("fastq_suffix")
 
 rule all:
     input:
-        "vcf/clean.vcf.gz",
-        "vcf/snp/clean.maf.snp.vcf.gz",
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
+        "vcf/snv.basic.vcf.gz",
+        "vcf/snv.core.vcf.gz",
+        "vcf/snp/snp.vcf.gz",
         "mapping/merged_depth_stats.txt"
 
 rule bwa_index:
@@ -73,6 +71,10 @@ rule QualityControlfastp:
         "clean_data/{sample}_2_clean.fq.gz",
         "logs/fastp/fastp_report/{sample}.fastp.html"
     threads: 2
+    params:
+        qualified_quality_phred=config["qualified_quality_phred"],
+        unqualified_percent_limit=config["unqualified_percent_limit"],
+        trim_front=config["trim_front"]
     log:
         "logs/fastp/{sample}.log"
     shell:
@@ -85,9 +87,9 @@ rule QualityControlfastp:
         -O {output[1]} \
         -h {output[2]} \
         -j /dev/null \
-        -q {qualified_quality_phred} \
-        -u {unqualified_percent_limit} \
-        -f {trim_front} \
+        -q {params.qualified_quality_phred} \
+        -u {params.unqualified_percent_limit} \
+        -f {params.trim_front} \
         2> {log}
         """
 
@@ -160,9 +162,9 @@ rule MergeDepthStats:
     run:
         with open(output[0], 'w') as out_file:
             for stat_file in input:
-                sample = stat_file.split("/")[-1].split(".")[0]
+                sample=stat_file.split("/")[-1].split(".")[0]
                 with gzip.open(stat_file, 'rt') as f: 
-                    last_line = f.readlines()[-1].strip()
+                    last_line=f.readlines()[-1].strip()
                     out_file.write(f"{sample}\t{last_line}\n") 
 
 rule HaplotypeCaller:
@@ -462,8 +464,8 @@ rule MergeSNPandINDEL:
         snp_vcf="vcf/snp/filter.snp.vcf.gz",
         indel_vcf="vcf/indel/filter.indel.vcf.gz"
     output:
-        "vcf/filter.vcf.gz",
-        "vcf/filter.vcf.gz.tbi"
+        temp("vcf/filter.vcf.gz"),
+        temp("vcf/filter.vcf.gz.tbi")
     log:
         "logs/vcf/filter.vcf.log"
     shell:
@@ -475,21 +477,39 @@ rule MergeSNPandINDEL:
         2> {log}
         """
 
-rule SNVbasicset:
+rule SNPfilter:
     input:
         filtered_snp_vcf="vcf/snp/filter.snp.vcf.gz"
     output:
-        "vcf/snp/snv.basic.vcf.gz"
+        "vcf/snp/snp.vcf.gz"
     log:
-        "logs/vcf/clean.maf.snp.vcf.log"
-    params:
-        missingrate=config["missingrate"],
-        maf=config["maf"]
-    threads: 8
+        "logs/vcf/SNPfilter.log"
     shell:
         """
         vcftools \
         --gzvcf {input.filtered_snp_vcf} \
+        --max-missing 1 \
+        --maf 0.05 \
+        --recode \
+        --stdout \
+        | bgzip > {output} \
+        2> {log}
+        """
+
+rule SNVbasicset:
+    input:
+        "vcf/filter.vcf.gz"
+    output:
+        "vcf/snv.basic.vcf.gz"
+    log:
+        "logs/vcf/basicset.vcf.log"
+    params:
+        missingrate=config["basic"]["missingrate"],
+        maf=config["basic"]["maf"]
+    shell:
+        """
+        vcftools \
+        --gzvcf {input} \
         --max-missing {params.missingrate} \
         --maf {params.maf} \
         --recode \
@@ -498,22 +518,22 @@ rule SNVbasicset:
         2> {log}
         """
         
-rule VCFMissingRateFilter:
+rule SNVcoreset:
     input:
-        filtered_vcf="vcf/filter.vcf.gz"
+        "vcf/filter.vcf.gz"
     output:
-        "vcf/clean.vcf.gz"
+        "vcf/snv.core.vcf.gz"
     log:
-        "logs/vcf/clean.vcf.log"
+        "logs/vcf/basicset.vcf.log"
     params:
-        missingrate=config["missingrate"]
-    threads: 8
+        missingrate=config["core"]["missingrate"],
+        maf=config["core"]["maf"]
     shell:
         """
         vcftools \
-        --gzvcf {input.filtered_vcf} \
+        --gzvcf {input} \
         --max-missing {params.missingrate} \
-        --maf 0.0005 \
+        --maf {params.maf} \
         --recode \
         --stdout \
         | bgzip > {output} \

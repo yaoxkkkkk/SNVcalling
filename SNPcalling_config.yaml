@@ -28,8 +28,12 @@ RPRS_indel: -20.0
 QUAL_indel: 20.0
 
 # VCFtools filter threshold
-missingrate: 0.9
-maf: 0.05
+basic:
+    missingrate: 0.6
+    maf: 0.005
+core:
+    missingrate: 0.8
+    maf: 0.05
 
 # Chromosome ID list
 chromosomes:
