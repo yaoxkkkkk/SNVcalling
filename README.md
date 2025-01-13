@@ -17,7 +17,7 @@
 
 ## What to output
 
-- SNV Basic set (missingrate < 0.6 and MAF > 0.005) and core set (missingrate < 0.8 and MAF > 0.05)
+- SNV Basic set (missingrate < 0.6 and MAF > 0.005) and core set (missingrate < 0.9 and MAF > 0.05)
 - SNP core set (no missing and MAF > 0.05, could be used for [population structure analysis](https://github.com/yaoxkkkkk/Population-structure-analysis-pipeline))
 
 ## Usage
