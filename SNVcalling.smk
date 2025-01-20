@@ -3,7 +3,7 @@ import gzip
 
 configfile: "SNVcalling_config.yaml"
 
-提取文件名的基部分（去除路径和扩展名）
+#####提取文件名的基部分（去除路径和扩展名）
 ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix=config.get("fastq_suffix")
 
@@ -529,7 +529,9 @@ rule ExtractcoresetList:
 
 rule MergeBasicSet:
     input:
-        "vcf/basicset_vcf.list"
+        "vcf/basicset_vcf.list",
+        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
     output:
         "vcf/snv.basic.vcf.gz",
         "vcf/snv.basic.vcf.gz.tbi"
@@ -545,7 +547,9 @@ rule MergeBasicSet:
 
 rule MergeCoreSet:
     input:
-        "vcf/coreset_vcf.list"
+        "vcf/coreset_vcf.list",
+        expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/coreset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
     output:
         "vcf/snv.core.vcf.gz",
         "vcf/snv.core.vcf.gz.tbi"
