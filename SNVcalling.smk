@@ -3,7 +3,7 @@ import gzip
 
 configfile: "SNVcalling_config.yaml"
 
-# 提取文件名的基部分（去除路径和扩展名）
+# # # # 提取文件名的基部分（去除路径和扩展名）
 ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix=config.get("fastq_suffix")
 
@@ -12,7 +12,6 @@ rule all:
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
         "vcf/snv.basic.vcf.gz",
         "vcf/snv.core.vcf.gz",
-        "vcf/snp/snp.vcf.gz",
         "mapping/merged_depth_stats.txt"
 
 rule bwa_index:
@@ -327,32 +326,51 @@ rule FilterSNPsPerChromosome:
         2> {log}
         """
         
-rule ExtractSNPList:
+rule SNPBasicsetPerChromosome:
     input:
-        expand("vcf/snp/filter_{chrom}.snp.vcf.gz", chrom=config["chromosomes"])
+        "vcf/snp/filter_{chrom}.snp.vcf.gz",
+        "vcf/snp/filter_{chrom}.snp.vcf.gz.tbi"
     output:
-        temp("vcf/snp/snp_vcf.list")
-    params:
-        vcf_dir="vcf/snp/"
-    shell:
-        """
-        find {params.vcf_dir} -name 'filter_*.snp.vcf.gz' > {output}
-        """
-        
-rule MergeSNPs:
-    input:
-        "vcf/snp/snp_vcf.list",
-        expand("vcf/snp/filter_{chrom}.snp.vcf.gz", chrom=config["chromosomes"])
-    output:
-        temp("vcf/snp/filter.snp.vcf.gz"),
-        temp("vcf/snp/filter.snp.vcf.gz.tbi")
+        temp("vcf/snp/basicset_{chrom}.snp.vcf.gz")
     log:
-        "logs/vcf/merge_filter_snp.log"
+        "logs/vcf/snp_basicset_{chrom}.log"
+    params:
+        missingrate=config["basic"]["missingrate"],
+        maf=config["basic"]["maf"]
     shell:
         """
-        gatk MergeVcfs \
-        -I {input[0]} \
-        -O {output[0]} \
+        vcftools \
+        --gzvcf {input[0]} \
+        --max-alleles 2 \
+        --max-missing {params.missingrate} \
+        --maf {params.maf} \
+        --recode \
+        --stdout \
+        | bgzip > {output} \
+        2> {log}
+        """
+
+rule SNPCoresetPerChromosome:
+    input:
+        "vcf/snp/filter_{chrom}.snp.vcf.gz",
+        "vcf/snp/filter_{chrom}.snp.vcf.gz.tbi"
+    output:
+        temp("vcf/snp/coreset_{chrom}.snp.vcf.gz")
+    log:
+        "logs/vcf/snp_coreset_{chrom}.log"
+    params:
+        missingrate=config["core"]["missingrate"],
+        maf=config["core"]["maf"]
+    shell:
+        """
+        vcftools \
+        --gzvcf {input[0]} \
+        --max-alleles 2 \
+        --max-missing {params.missingrate} \
+        --maf {params.maf} \
+        --recode \
+        --stdout \
+        | bgzip > {output} \
         2> {log}
         """
         
@@ -372,6 +390,7 @@ rule SelectIndelsPerChromosome:
         -V {input.raw_vcf} \
         -O {output[0]} \
         --select-type-to-include INDEL \
+        --max-indel-size 50 \
         2> {log}
         """
         
@@ -430,27 +449,94 @@ rule FilterIndelsPerChromosome:
         2> {log}
         """
         
-rule ExtractINDELList:
+rule IndelBasicsetPerChromosome:
     input:
-        expand("vcf/indel/filter_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+        "vcf/indel/filter_{chrom}.indel.vcf.gz",
+        "vcf/indel/filter_{chrom}.indel.vcf.gz.tbi"
     output:
-        temp("vcf/indel/indel_vcf.list")
+        temp("vcf/indel/basicset_{chrom}.indel.vcf.gz")
+    log:
+        "logs/vcf/indel_basicset_{chrom}.log"
     params:
-        vcf_dir="vcf/indel/"
+        missingrate=config["basic"]["missingrate"],
+        maf=config["basic"]["maf"]
     shell:
         """
-        find {params.vcf_dir} -name 'filter_*.indel.vcf.gz' > {output}
+        vcftools \
+        --gzvcf {input[0]} \
+        --max-alleles 2 \
+        --max-missing {params.missingrate} \
+        --maf {params.maf} \
+        --recode \
+        --stdout \
+        | bgzip > {output} \
+        2> {log}
         """
-        
-rule MergeINDELs:
+
+rule IndelCoresetPerChromosome:
     input:
-        "vcf/indel/indel_vcf.list",
-        expand("vcf/indel/filter_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+        "vcf/indel/filter_{chrom}.indel.vcf.gz",
+        "vcf/indel/filter_{chrom}.indel.vcf.gz.tbi"
     output:
-        temp("vcf/indel/filter.indel.vcf.gz"),
-        temp("vcf/indel/filter.indel.vcf.gz.tbi")
+        temp("vcf/indel/coreset_{chrom}.indel.vcf.gz")
     log:
-        "logs/vcf/merge_filter_indel.log"
+        "logs/vcf/indel_coreset_{chrom}.log"
+    params:
+        missingrate=config["core"]["missingrate"],
+        maf=config["core"]["maf"]
+    shell:
+        """
+        vcftools \
+        --gzvcf {input[0]} \
+        --max-alleles 2 \
+        --max-missing {params.missingrate} \
+        --maf {params.maf} \
+        --recode \
+        --stdout \
+        | bgzip > {output} \
+        2> {log}
+        """
+
+rule ExtractbasicsetList:
+    input:
+        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/basicset_vcf.list")
+    params:
+        snp_vcf_dir="vcf/snp/",
+        indel_vcf_dir="vcf/indel/"
+    shell:
+        """
+        find {params.snp_vcf_dir} -name 'basicset_*.snp.vcf.gz' > {output}
+        find {params.indel_vcf_dir} -name 'basicset_*.indel.vcf.gz' >> {output}
+        """
+
+rule ExtractcoresetList:
+    input:
+        expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/coreset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/coreset_vcf.list")
+    params:
+        snp_vcf_dir="vcf/snp/",
+        indel_vcf_dir="vcf/indel/"
+    shell:
+        """
+        find {params.snp_vcf_dir} -name 'coreset_*.snp.vcf.gz' > {output}
+        find {params.indel_vcf_dir} -name 'coreset_*.indel.vcf.gz' >> {output}
+        """
+
+rule MergeBasicSet:
+    input:
+        "vcf/basicset_vcf.list",
+        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        "vcf/snv.basic.vcf.gz",
+        "vcf/snv.basic.vcf.gz.tbi"
+    log:
+        "logs/vcf/merge_basicset.log"
     shell:
         """
         gatk MergeVcfs \
@@ -458,84 +544,21 @@ rule MergeINDELs:
         -O {output[0]} \
         2> {log}
         """
-        
-rule MergeSNPandINDEL:
+
+rule MergeCoreSet:
     input:
-        snp_vcf="vcf/snp/filter.snp.vcf.gz",
-        indel_vcf="vcf/indel/filter.indel.vcf.gz"
+        "vcf/coreset_vcf.list",
+        expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/coreset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
     output:
-        temp("vcf/filter.vcf.gz"),
-        temp("vcf/filter.vcf.gz.tbi")
+        "vcf/snv.core.vcf.gz",
+        "vcf/snv.core.vcf.gz.tbi"
     log:
-        "logs/vcf/filter.vcf.log"
+        "logs/vcf/merge_coreset.log"
     shell:
         """
-        gatk MergeVcfs  \
-        -I {input.snp_vcf} \
-        -I {input.indel_vcf} \
+        gatk MergeVcfs \
+        -I {input[0]} \
         -O {output[0]} \
-        2> {log}
-        """
-
-rule SNPfilter:
-    input:
-        "vcf/snp/filter.snp.vcf.gz"
-    output:
-        "vcf/snp/snp.vcf.gz"
-    log:
-        "logs/vcf/SNPfilter.log"
-    shell:
-        """
-        vcftools \
-        --gzvcf {input} \
-        --max-missing 1 \
-        --maf 0.05 \
-        --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
-        """
-
-rule SNVbasicset:
-    input:
-        "vcf/filter.vcf.gz"
-    output:
-        "vcf/snv.basic.vcf.gz"
-    log:
-        "logs/vcf/basicset.vcf.log"
-    params:
-        missingrate=config["basic"]["missingrate"],
-        maf=config["basic"]["maf"]
-    shell:
-        """
-        vcftools \
-        --gzvcf {input} \
-        --max-missing {params.missingrate} \
-        --maf {params.maf} \
-        --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
-        """
-        
-rule SNVcoreset:
-    input:
-        "vcf/filter.vcf.gz"
-    output:
-        "vcf/snv.core.vcf.gz"
-    log:
-        "logs/vcf/basicset.vcf.log"
-    params:
-        missingrate=config["core"]["missingrate"],
-        maf=config["core"]["maf"]
-    shell:
-        """
-        vcftools \
-        --gzvcf {input} \
-        --max-missing {params.missingrate} \
-        --maf {params.maf} \
-        --recode \
-        --stdout \
-        | bgzip > {output} \
         2> {log}
         """
