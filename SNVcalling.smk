@@ -3,7 +3,7 @@ import gzip
 
 configfile: "SNVcalling_config.yaml"
 
-# 提取文件名的基部分（去除路径和扩展名）
+# # # # 提取文件名的基部分（去除路径和扩展名）
 ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix=config.get("fastq_suffix")
 
@@ -494,5 +494,71 @@ rule IndelCoresetPerChromosome:
         --recode \
         --stdout \
         | bgzip > {output} \
+        2> {log}
+        """
+
+rule ExtractbasicsetList:
+    input:
+        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/basicset_vcf.list")
+    params:
+        snp_vcf_dir="vcf/snp/",
+        indel_vcf_dir="vcf/indel/"
+    shell:
+        """
+        find {params.snp_vcf_dir} -name 'basicset_*.snp.vcf.gz' > {output}
+        find {params.indel_vcf_dir} -name 'basicset_*.indel.vcf.gz' >> {output}
+        """
+
+rule ExtractcoresetList:
+    input:
+        expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/coreset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        temp("vcf/coreset_vcf.list")
+    params:
+        snp_vcf_dir="vcf/snp/",
+        indel_vcf_dir="vcf/indel/"
+    shell:
+        """
+        find {params.snp_vcf_dir} -name 'coreset_*.snp.vcf.gz' > {output}
+        find {params.indel_vcf_dir} -name 'coreset_*.indel.vcf.gz' >> {output}
+        """
+
+rule MergeBasicSet:
+    input:
+        "vcf/basicset_vcf.list",
+        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        "vcf/snv.basic.vcf.gz",
+        "vcf/snv.basic.vcf.gz.tbi"
+    log:
+        "logs/vcf/merge_basicset.log"
+    shell:
+        """
+        gatk MergeVcfs \
+        -I {input[0]} \
+        -O {output[0]} \
+        2> {log}
+        """
+
+rule MergeCoreSet:
+    input:
+        "vcf/coreset_vcf.list",
+        expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
+        expand("vcf/indel/coreset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
+    output:
+        "vcf/snv.core.vcf.gz",
+        "vcf/snv.core.vcf.gz.tbi"
+    log:
+        "logs/vcf/merge_coreset.log"
+    shell:
+        """
+        gatk MergeVcfs \
+        -I {input[0]} \
+        -O {output[0]} \
         2> {log}
         """
