@@ -112,7 +112,7 @@ rule BWA_map:
         -t {threads} \
         {params.prefix} {input.r1} {input.r2} \
         | samtools sort -@ {threads} -o {output} \
-        2> {log}
+        &> {log}
         """
 
 rule RemoveDuplicates:
