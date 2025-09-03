@@ -1,6 +1,6 @@
 > This pipeline is inspired by F.J. Yang (Bioinplant Lab, Zhejiang University).
 
-## Dependent Software
+## Dependent softwares
 
 - [fastp](https://github.com/OpenGene/fastp)
 - [BWA](https://github.com/lh3/bwa)
@@ -63,7 +63,7 @@ cat /workingdir/genome_index/genome.fasta | grep ">" | awk '{gsub(/^>/, "    - "
 
 ```shell
 # Fastq file suffix
-fastq_suffix: " " # Default value is ".fq.gz"
+fastq_suffix: ".fq.gz" # Default value is ".fq.gz"
 ```
 
 #### 2.3 Fill in the name of the samples. The samples name need to be filled with specific format like:
@@ -98,9 +98,12 @@ Put snakefile and configuration file in the same directory, then running it.
 
 For example:
 
-```shell
+```bash
 snakemake \
 	--snakefile ${snakefile} \
+    --configfile ${configfile} \
 	-d ${working_dir} \
-	--cores ${cores_num}
+	--cores ${cores_num} \
+	--rerun-incomplete \
+	--nolock
 ```
