@@ -5,8 +5,8 @@
 - [fastp](https://github.com/OpenGene/fastp)
 - [BWA](https://github.com/lh3/bwa)
 - [GATK](https://gatk.broadinstitute.org/hc/en-us)
-- [samtools](https://github.com/samtools/samtools)
-- [vcftools](https://github.com/vcftools/vcftools)
+- [SAMtools](https://github.com/samtools/samtools)
+- [VCFtools](https://github.com/vcftools/vcftools)
 - bgzip (part of [htslib](https://github.com/samtools/htslib))
 - [PanDepth](https://github.com/HuiyangYu/PanDepth)
 
@@ -17,8 +17,7 @@
 
 ## What to output
 
-- SNV basic set (missingrate < 0.6, MAF > 0.005, multi-allelic sites filtered) 
-- SNV core set (missingrate < 0.8, MAF > 0.05, multi-allelic sites filtered)
+- SNV core set (missingrate < 0.2, MAF > 0.05, bi-allelic sites)
 
 ## Usage
 

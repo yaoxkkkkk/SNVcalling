@@ -3,16 +3,15 @@ import gzip
 
 configfile: "SNVcalling_config.yaml"
 
-# # # # 提取文件名的基部分（去除路径和扩展名）
+#### 提取文件名的基部分（去除路径和扩展名）
 ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix=config.get("fastq_suffix")
 
 rule all:
     input:
+        "mapping/merged_depth_stats.txt",
         expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
-        "vcf/snv.basic.vcf.gz",
-        "vcf/snv.core.vcf.gz",
-        "mapping/merged_depth_stats.txt"
+        "vcf/snv.core.vcf.gz"
 
 rule bwa_index:
     input:
@@ -325,30 +324,6 @@ rule FilterSNPsPerChromosome:
         -O {output[0]} \
         2> {log}
         """
-        
-rule SNPBasicsetPerChromosome:
-    input:
-        "vcf/snp/filter_{chrom}.snp.vcf.gz",
-        "vcf/snp/filter_{chrom}.snp.vcf.gz.tbi"
-    output:
-        temp("vcf/snp/basicset_{chrom}.snp.vcf.gz")
-    log:
-        "logs/vcf/snp_basicset_{chrom}.log"
-    params:
-        missingrate=config["basic"]["missingrate"],
-        maf=config["basic"]["maf"]
-    shell:
-        """
-        vcftools \
-        --gzvcf {input[0]} \
-        --max-alleles 2 \
-        --max-missing {params.missingrate} \
-        --maf {params.maf} \
-        --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
-        """
 
 rule SNPCoresetPerChromosome:
     input:
@@ -448,30 +423,6 @@ rule FilterIndelsPerChromosome:
         -O {output[0]} \
         2> {log}
         """
-        
-rule IndelBasicsetPerChromosome:
-    input:
-        "vcf/indel/filter_{chrom}.indel.vcf.gz",
-        "vcf/indel/filter_{chrom}.indel.vcf.gz.tbi"
-    output:
-        temp("vcf/indel/basicset_{chrom}.indel.vcf.gz")
-    log:
-        "logs/vcf/indel_basicset_{chrom}.log"
-    params:
-        missingrate=config["basic"]["missingrate"],
-        maf=config["basic"]["maf"]
-    shell:
-        """
-        vcftools \
-        --gzvcf {input[0]} \
-        --max-alleles 2 \
-        --max-missing {params.missingrate} \
-        --maf {params.maf} \
-        --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
-        """
 
 rule IndelCoresetPerChromosome:
     input:
@@ -497,21 +448,6 @@ rule IndelCoresetPerChromosome:
         2> {log}
         """
 
-rule ExtractbasicsetList:
-    input:
-        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
-        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
-    output:
-        temp("vcf/basicset_vcf.list")
-    params:
-        snp_vcf_dir="vcf/snp/",
-        indel_vcf_dir="vcf/indel/"
-    shell:
-        """
-        find {params.snp_vcf_dir} -name 'basicset_*.snp.vcf.gz' > {output}
-        find {params.indel_vcf_dir} -name 'basicset_*.indel.vcf.gz' >> {output}
-        """
-
 rule ExtractcoresetList:
     input:
         expand("vcf/snp/coreset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
@@ -525,24 +461,6 @@ rule ExtractcoresetList:
         """
         find {params.snp_vcf_dir} -name 'coreset_*.snp.vcf.gz' > {output}
         find {params.indel_vcf_dir} -name 'coreset_*.indel.vcf.gz' >> {output}
-        """
-
-rule MergeBasicSet:
-    input:
-        "vcf/basicset_vcf.list",
-        expand("vcf/snp/basicset_{chrom}.snp.vcf.gz", chrom=config["chromosomes"]),
-        expand("vcf/indel/basicset_{chrom}.indel.vcf.gz", chrom=config["chromosomes"])
-    output:
-        "vcf/snv.basic.vcf.gz",
-        "vcf/snv.basic.vcf.gz.tbi"
-    log:
-        "logs/vcf/merge_basicset.log"
-    shell:
-        """
-        gatk MergeVcfs \
-        -I {input[0]} \
-        -O {output[0]} \
-        2> {log}
         """
 
 rule MergeCoreSet:
