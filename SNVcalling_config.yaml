@@ -4,7 +4,7 @@
 ref: "" 
 
 # Fastq file suffix
-fastq_suffix: "" # Defualt is ".fq.gz"
+fastq_suffix: ".fq.gz" # Defualt is ".fq.gz"
 
 # fastp parameters
 qualified_quality_phred: 20
@@ -28,12 +28,12 @@ RPRS_indel: -20.0
 QUAL_indel: 20.0
 
 # VCFtools filter threshold
-basic:
-    missingrate: 0.6
-    maf: 0.005
 core:
     missingrate: 0.8
     maf: 0.05
+
+conda_env:
+    gatk_env: "gatk"
 
 # Chromosome ID list
 chromosomes:
