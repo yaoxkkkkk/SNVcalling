@@ -94,7 +94,7 @@ awk '{print "    - \"" $0 "\""}' sample.list >> ${working_dir}/SNPcalling_config
 
 ### 3. Submit the pipeline to HPC cluster
 
-Put snakefile and configuration file in the same directory, then running it.
+Put snakefile and configuration file in the same directory and run.
 
 For example:
 
