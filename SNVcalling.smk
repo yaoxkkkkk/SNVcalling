@@ -3,14 +3,13 @@ import gzip
 
 configfile: "SNVcalling_config.yaml"
 
-#### 提取文件名的基部分（去除路径和扩展名）
 ref_basename=os.path.splitext(os.path.basename(config["ref"]))[0]
 fastq_suffix=config.get("fastq_suffix")
 
 rule all:
     input:
-        "mapping/merged_depth_stats.txt",
-        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"]),
+        expand("vcf/gvcf/{sample}.g.vcf.gz", sample=config["sample"])
+        "mapping/merged_depth_stats.txt"
         "vcf/snv.core.vcf.gz"
 
 rule bwa_index:
@@ -24,6 +23,10 @@ rule bwa_index:
         "genome_index/{ref_basename}.sa"
     log:
         "logs/index/bwa_index_{ref_basename}.log"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
     shell:
         """
         bwa index \
@@ -39,6 +42,10 @@ rule samtools_fai_index:
         "genome_index/{ref_basename}.fai"
     log:
         "logs/index/samtools_index_{ref_basename}.log"
+    threads: 1
+    resources:
+        cpus_per_task=1,
+        mem_mb=2000
     shell:
         """
         samtools faidx {input.reference_genome} 2> {log}
@@ -50,8 +57,14 @@ rule gatk_dict_index:
         reference_genome=config["ref"]
     output:
         "genome_index/{ref_basename}.dict"
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/index/gatk_index_{ref_basename}.log"
+    threads: 1
+    resources:
+        cpus_per_task=1,
+        mem_mb=4000
     shell:
         """
         gatk CreateSequenceDictionary \
@@ -62,13 +75,16 @@ rule gatk_dict_index:
 
 rule QualityControlfastp:
     input:
-        f"raw_data/{{sample}}_clean_1{fastq_suffix}",
-        f"raw_data/{{sample}}_clean_2{fastq_suffix}"
+        f"raw_data/{{sample}}_1{fastq_suffix}",
+        f"raw_data/{{sample}}_2{fastq_suffix}"
     output:
         "clean_data/{sample}_1_clean.fq.gz",
         "clean_data/{sample}_2_clean.fq.gz",
         "logs/fastp/fastp_report/{sample}.fastp.html"
     threads: 2
+    resources:
+        cpus_per_task=2,
+        mem_mb=4000
     params:
         qualified_quality_phred=config["qualified_quality_phred"],
         unqualified_percent_limit=config["unqualified_percent_limit"],
@@ -99,6 +115,9 @@ rule BWA_map:
     output:
         temp("mapping/{sample}.sorted.bam")
     threads: 8
+    resources:
+        cpus_per_task=8,
+        mem_mb=32000
     params:
         rg=r"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA",
         prefix=f"genome_index/{ref_basename}"
@@ -111,7 +130,7 @@ rule BWA_map:
         -t {threads} \
         {params.prefix} {input.r1} {input.r2} \
         | samtools sort -@ {threads} -o {output} \
-        &> {log}
+        2> {log}
         """
 
 rule RemoveDuplicates:
@@ -120,6 +139,12 @@ rule RemoveDuplicates:
     output:
         "mapping/{sample}.sorted.markdup.bam",
         "mapping/markdup_metrics/{sample}.sorted.markdup_metrics.txt"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/bwa/RemoveDuplicates_{sample}.log"
     shell:
@@ -141,6 +166,9 @@ rule BAMDepthStat:
     log:
         "logs/depth/{sample}_pandepth.log"
     threads: 2
+    resources:
+        cpus_per_task=2,
+        mem_mb=4000
     shell:
         """
         pandepth \
@@ -157,6 +185,10 @@ rule MergeDepthStats:
         "mapping/merged_depth_stats.txt"
     log:
         "logs/depth/merge_depth_stats.log"
+    threads: 1
+    resources:
+        cpus_per_task=1,
+        mem_mb=2000
     run:
         with open(output[0], 'w') as out_file:
             for stat_file in input:
@@ -174,13 +206,16 @@ rule HaplotypeCaller:
     output:
         "vcf/gvcf/{sample}.g.vcf.gz",
         "vcf/gvcf/{sample}.g.vcf.gz.tbi"
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/gvcf/{sample}.gvcf.log"
     threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=16000
     params:
         ERC="GVCF"
-    resources:
-        mem_mb=32768
     shell:
         """
         gatk HaplotypeCaller \
@@ -198,6 +233,10 @@ rule ExtractVCFlist:
         "vcf/gvcf/vcf.list"
     params:
         gvcf_dir="vcf/gvcf/"
+    threads: 1
+    resources:
+        cpus_per_task=1,
+        mem_mb=1000
     shell:
         """
         find {params.gvcf_dir} -name '*.g.vcf.gz' > {output}
@@ -210,9 +249,14 @@ rule ConsolidateGVCFsPerChromosome:
     output:
         temp("vcf/cohort_{chrom}.g.vcf.gz"),
         temp("vcf/cohort_{chrom}.g.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/ConsolidateGVCFs_{chrom}.log"
-    threads: 4
+    threads: 20
+    resources:
+        cpus_per_task=20,
+        mem_mb=80000
     shell:
         """
         gatk CombineGVCFs \
@@ -231,11 +275,14 @@ rule GenotypeGVCFsPerChromosome:
     output:
         temp("vcf/raw_{chrom}.vcf.gz"),
         temp("vcf/raw_{chrom}.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/GenotypeGVCFs_{chrom}.log"
-    threads: 4
+    threads: 16
     resources:
-        mem_mb=32768
+        cpus_per_task=16,
+        mem_mb=64000
     shell:
         """
         gatk GenotypeGVCFs \
@@ -252,9 +299,14 @@ rule SelectSNPsPerChromosome:
     output:
         temp("vcf/snp/raw_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/raw_{chrom}.snp.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/snp_{chrom}.log"
     threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
     shell:
         """
         gatk SelectVariants \
@@ -272,8 +324,14 @@ rule MarkFilteredSNPsPerChromosome:
     output:
         temp("vcf/snp/mark_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/mark_{chrom}.snp.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/snp_mark_{chrom}.log"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=12000
     params:
         QD_snp=config["QD_snp"],
         MQ_snp=config["MQ_snp"],
@@ -313,8 +371,14 @@ rule FilterSNPsPerChromosome:
     output:
         temp("vcf/snp/filter_{chrom}.snp.vcf.gz"),
         temp("vcf/snp/filter_{chrom}.snp.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/snp_filter_{chrom}.log"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
     shell:
         """
         gatk SelectVariants \
@@ -336,6 +400,10 @@ rule SNPCoresetPerChromosome:
     params:
         missingrate=config["core"]["missingrate"],
         maf=config["core"]["maf"]
+    threads: 8
+    resources:
+        cpus_per_task=8,
+        mem_mb=16000
     shell:
         """
         vcftools \
@@ -356,9 +424,14 @@ rule SelectIndelsPerChromosome:
     output:
         temp("vcf/indel/raw_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/raw_{chrom}.indel.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/indel_{chrom}.log"
     threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
     shell:
         """
         gatk SelectVariants \
@@ -377,8 +450,14 @@ rule MarkFilteredIndelsPerChromosome:
     output:
         temp("vcf/indel/mark_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/mark_{chrom}.indel.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/indel_mark_{chrom}.log"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=12000
     params:
         QD_indel=config["QD_indel"],
         FS_indel=config["FS_indel"],
@@ -412,8 +491,14 @@ rule FilterIndelsPerChromosome:
     output:
         temp("vcf/indel/filter_{chrom}.indel.vcf.gz"),
         temp("vcf/indel/filter_{chrom}.indel.vcf.gz.tbi")
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/indel_clean_{chrom}.log"
+    threads: 4
+    resources:
+        cpus_per_task=4,
+        mem_mb=8000
     shell:
         """
         gatk SelectVariants \
@@ -435,6 +520,10 @@ rule IndelCoresetPerChromosome:
     params:
         missingrate=config["core"]["missingrate"],
         maf=config["core"]["maf"]
+    threads: 8
+    resources:
+        cpus_per_task=8,
+        mem_mb=16000
     shell:
         """
         vcftools \
@@ -457,6 +546,10 @@ rule ExtractcoresetList:
     params:
         snp_vcf_dir="vcf/snp/",
         indel_vcf_dir="vcf/indel/"
+    threads: 1
+    resources:
+        cpus_per_task=1,
+        mem_mb=1000
     shell:
         """
         find {params.snp_vcf_dir} -name 'coreset_*.snp.vcf.gz' > {output}
@@ -471,8 +564,14 @@ rule MergeCoreSet:
     output:
         "vcf/snv.core.vcf.gz",
         "vcf/snv.core.vcf.gz.tbi"
+    conda:
+        config["conda_env"]["gatk_env"]
     log:
         "logs/vcf/merge_coreset.log"
+    threads: 8
+    resources:
+        cpus_per_task=8,
+        mem_mb=32000
     shell:
         """
         gatk MergeVcfs \
