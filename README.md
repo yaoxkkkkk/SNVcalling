@@ -100,10 +100,15 @@ For example:
 
 ```bash
 snakemake \
-	--snakefile ${snakefile} \
-    --configfile ${configfile} \
-	-d ${working_dir} \
-	--cores ${cores_num} \
-	--rerun-incomplete \
-	--nolock
+--snakefile SNVcalling.smk \
+--configfile SNVcalling_PG_config.yaml \
+-d ./ \
+--use-conda \
+--use-singularity \
+--nolock \
+--rerun-incomplete \
+ --restart-time 3 \
+--executor slurm \
+--default-resources \
+--jobs 999
 ```
