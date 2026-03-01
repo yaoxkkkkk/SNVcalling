@@ -412,9 +412,11 @@ rule SNPCoresetPerChromosome:
         --max-missing {params.missingrate} \
         --maf {params.maf} \
         --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
+        --stdout 2>> {log} \
+        | bcftools annotate \
+        -x INFO,^FORMAT/GT \
+        -Oz -o {output} \
+        - 2>> {log}
         """
         
 rule SelectIndelsPerChromosome:
@@ -532,9 +534,11 @@ rule IndelCoresetPerChromosome:
         --max-missing {params.missingrate} \
         --maf {params.maf} \
         --recode \
-        --stdout \
-        | bgzip > {output} \
-        2> {log}
+        --stdout 2>> {log} \
+        | bcftools annotate \
+        -x INFO,^FORMAT/GT \
+        -Oz -o {output} \
+        - 2>> {log}
         """
 
 rule ExtractcoresetList:
