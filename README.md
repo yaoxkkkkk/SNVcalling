@@ -109,6 +109,6 @@ snakemake \
     --rerun-incomplete \
     --restart-time 3 \
     --executor slurm \
-    --default-resources \
+    --default-resources slurm_partition=${partition_name} slurm_account=${hpc_account} \
     --jobs 999
 ```
